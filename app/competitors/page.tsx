@@ -1,7 +1,7 @@
 'use client'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
-import { TrendingUp, TrendingDown, Users, Heart, MessageCircle } from 'lucide-react'
+import { TrendingUp, TrendingDown } from 'lucide-react'
 
 export default function CompetitorTracker() {
   const competitors = [

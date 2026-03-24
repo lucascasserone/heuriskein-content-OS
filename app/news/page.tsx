@@ -5,8 +5,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
 import { Badge } from '@/components/ui/Badge'
 import { Search, Bookmark, Share2, ExternalLink } from 'lucide-react'
 
+type NewsCategory = 'trends' | 'product' | 'insights'
+
+type NewsItem = {
+  id: number
+  title: string
+  source: string
+  category: NewsCategory
+  date: string
+  summary: string
+  url: string
+  tags: string[]
+}
+
+type CategoryTab = {
+  id: 'all' | NewsCategory
+  label: string
+  count: number
+}
+
 export default function NewsConsolidator() {
-  const newsItems = [
+  const newsItems: NewsItem[] = [
     {
       id: 1,
       title: 'Latest Social Media Marketing Trends 2024',
@@ -59,14 +78,14 @@ export default function NewsConsolidator() {
     },
   ]
 
-  const categories = [
+  const categories: CategoryTab[] = [
     { id: 'all', label: 'All News', count: 5 },
     { id: 'trends', label: 'Trends', count: 2 },
     { id: 'product', label: 'Product Updates', count: 2 },
     { id: 'insights', label: 'Insights', count: 1 },
   ]
 
-  const categoryColors = {
+  const categoryColors: Record<NewsCategory, string> = {
     trends: 'bg-blue-900 text-blue-200',
     product: 'bg-purple-900 text-purple-200',
     insights: 'bg-green-900 text-green-200',

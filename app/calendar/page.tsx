@@ -1,9 +1,17 @@
 'use client'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
-import { ChevronLeft, ChevronRight, Instagram, Youtube, TrendingUp } from 'lucide-react'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/Tabs'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useState } from 'react'
+
+type Platform = 'Instagram' | 'TikTok' | 'YouTube' | 'LinkedIn'
+
+type ScheduleItem = {
+  platform: Platform
+  title: string
+  color: string
+}
 
 export default function ContentCalendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date(2024, 3, 1))
@@ -19,7 +27,7 @@ export default function ContentCalendar() {
     calendarDays.push(i)
   }
 
-  const schedules = {
+  const schedules: Record<number, ScheduleItem[]> = {
     1: [
       { platform: 'Instagram', title: 'Product Launch', color: 'bg-pink-900' },
       { platform: 'TikTok', title: 'Trending Sound', color: 'bg-black' },
@@ -36,7 +44,7 @@ export default function ContentCalendar() {
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
   const monthName = currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 
-  const platformColors = {
+  const platformColors: Record<Platform, string> = {
     Instagram: 'bg-pink-900 text-pink-200',
     TikTok: 'bg-black text-white',
     YouTube: 'bg-red-900 text-red-200',
@@ -127,7 +135,7 @@ export default function ContentCalendar() {
 
       {/* Legend */}
       <div className="grid gap-4 md:grid-cols-3">
-        {['Instagram', 'TikTok', 'YouTube'].map((platform) => (
+        {(['Instagram', 'TikTok', 'YouTube'] as Platform[]).map((platform) => (
           <Card key={platform}>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium flex items-center gap-2">

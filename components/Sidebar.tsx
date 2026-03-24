@@ -8,7 +8,6 @@ import {
   Calendar,
   TrendingUp,
   Newspaper,
-  Logo as IconLogo,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
