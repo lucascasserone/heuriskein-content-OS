@@ -1,67 +1,131 @@
 'use client'
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
+import { useEffect, useState } from 'react'
+
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { Calendar } from 'lucide-react'
 
-const impressionsData = [
-  { date: 'Apr 1', impressions: 2400 },
-  { date: 'Apr 5', impressions: 1398 },
-  { date: 'Apr 10', impressions: 9800 },
-  { date: 'Apr 15', impressions: 3908 },
-  { date: 'Apr 20', impressions: 4800 },
-  { date: 'Apr 25', impressions: 3800 },
-]
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
+import { InstagramPost, InstagramPostType } from '@/lib/content/types'
+import { fetchInstagramPosts } from '@/lib/instagram/api'
 
-const engagementData = [
-  { date: 'Apr 1', engagement: 4.2 },
-  { date: 'Apr 5', engagement: 3.1 },
-  { date: 'Apr 10', engagement: 8.2 },
-  { date: 'Apr 15', engagement: 5.9 },
-  { date: 'Apr 20', engagement: 6.8 },
-  { date: 'Apr 25', engagement: 5.5 },
-]
+const typeColors: Record<InstagramPostType, string> = {
+  image: '#60A5FA',
+  video: '#F97316',
+  carousel: '#A78BFA',
+  reel: '#34D399',
+  story: '#FACC15',
+}
 
-const platformData = [
-  { name: 'Instagram', value: 45, color: '#E1306C' },
-  { name: 'TikTok', value: 30, color: '#000000' },
-  { name: 'YouTube', value: 20, color: '#FF0000' },
-  { name: 'LinkedIn', value: 5, color: '#0077B5' },
-]
+function getPostDateLabel(post: InstagramPost): string {
+  const value = post.publishedAt ?? post.scheduledFor ?? post.createdAt
+  return new Date(value).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+  })
+}
 
-const topPostsData = [
-  { title: 'Summer collection', engagement: 8432 },
-  { title: 'New product launch', engagement: 6234 },
-  { title: 'Behind the scenes', engagement: 5892 },
-  { title: 'Team highlights', engagement: 4521 },
-]
+function formatTypeLabel(type: InstagramPostType): string {
+  return type.charAt(0).toUpperCase() + type.slice(1)
+}
 
 export default function Analytics() {
+  const [posts, setPosts] = useState<InstagramPost[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+
+    async function loadPosts() {
+      try {
+        const nextPosts = await fetchInstagramPosts()
+        if (active) {
+          setPosts(nextPosts)
+          setErrorMessage(null)
+        }
+      } catch (error) {
+        if (active) {
+          setErrorMessage(error instanceof Error ? error.message : 'Failed to load analytics data')
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadPosts()
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const datedPosts = [...posts].sort((left, right) => {
+    const leftDate = left.publishedAt ?? left.scheduledFor ?? left.createdAt
+    const rightDate = right.publishedAt ?? right.scheduledFor ?? right.createdAt
+    return leftDate.localeCompare(rightDate)
+  })
+
+  const impressionsData = datedPosts.map((post) => ({
+    date: getPostDateLabel(post),
+    impressions: post.metrics.impressions,
+  }))
+
+  const engagementData = datedPosts.map((post) => ({
+    date: getPostDateLabel(post),
+    engagement: post.metrics.engagementRate,
+  }))
+
+  const contentTypeData = (['image', 'video', 'carousel', 'reel', 'story'] as InstagramPostType[])
+    .map((type) => ({
+      name: formatTypeLabel(type),
+      value: posts.filter((post) => post.postType === type).length,
+      color: typeColors[type],
+    }))
+    .filter((entry) => entry.value > 0)
+
+  const topPostsData = [...posts]
+    .sort((left, right) => right.metrics.likes - left.metrics.likes)
+    .slice(0, 4)
+
+  const totalImpressions = posts.reduce((total, post) => total + post.metrics.impressions, 0)
+  const averageEngagement = posts.length > 0
+    ? posts.reduce((total, post) => total + post.metrics.engagementRate, 0) / posts.length
+    : 0
+  const totalReach = posts.reduce((total, post) => total + post.metrics.reach, 0)
+  const scheduledPosts = posts.filter((post) => post.status === 'scheduled').length
+
   return (
     <div className="space-y-8 p-8">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="section-title">Analytics Dashboard</h1>
           <p className="mt-2 text-muted-foreground">
-            Track your content performance and engagement metrics
+            Performance metrics derived directly from the Instagram content data model.
           </p>
         </div>
         <button className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-muted">
           <Calendar className="h-4 w-4" />
-          Last 30 Days
+          Shared Content Metrics
         </button>
       </div>
 
-      {/* Key Metrics */}
+      {errorMessage && (
+        <div className="rounded-lg border border-red-500/30 bg-red-950/40 px-4 py-3 text-sm text-red-200">
+          {errorMessage}
+        </div>
+      )}
+
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">Total Impressions</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">26.1K</div>
-            <p className="text-xs text-muted-foreground">+12.5% from last month</p>
+            <div className="text-2xl font-bold">{totalImpressions.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Across all Instagram posts</p>
           </CardContent>
         </Card>
         <Card>
@@ -69,17 +133,17 @@ export default function Analytics() {
             <CardTitle className="text-sm font-medium">Avg. Engagement</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">5.9%</div>
-            <p className="text-xs text-muted-foreground">+1.2% from last month</p>
+            <div className="text-2xl font-bold">{averageEngagement.toFixed(1)}%</div>
+            <p className="text-xs text-muted-foreground">Average engagement rate</p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium">Follower Growth</CardTitle>
+            <CardTitle className="text-sm font-medium">Scheduled Posts</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">+845</div>
-            <p className="text-xs text-muted-foreground">This month</p>
+            <div className="text-2xl font-bold">{scheduledPosts}</div>
+            <p className="text-xs text-muted-foreground">Posts in the publishing queue</p>
           </CardContent>
         </Card>
         <Card>
@@ -87,114 +151,133 @@ export default function Analytics() {
             <CardTitle className="text-sm font-medium">Total Reach</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">89.4K</div>
-            <p className="text-xs text-muted-foreground">Across platforms</p>
+            <div className="text-2xl font-bold">{totalReach.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Measured from post metrics</p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Charts */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Impressions Chart */}
         <Card className="md:col-span-1">
           <CardHeader>
             <CardTitle>Impressions Trend</CardTitle>
-            <CardDescription>Your content impressions over time</CardDescription>
+            <CardDescription>Impressions pulled from the shared Instagram posts</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={impressionsData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
-                <YAxis stroke="hsl(var(--muted-foreground))" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '0.5rem',
-                  }}
-                />
-                <Bar dataKey="impressions" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+            {isLoading ? (
+              <div className="py-16 text-center text-muted-foreground">Loading analytics...</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={impressionsData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
+                  <YAxis stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '0.5rem',
+                    }}
+                  />
+                  <Bar dataKey="impressions" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
-        {/* Engagement Chart */}
         <Card className="md:col-span-1">
           <CardHeader>
             <CardTitle>Engagement Rate</CardTitle>
-            <CardDescription>Daily engagement percentage</CardDescription>
+            <CardDescription>Engagement rate per post</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={engagementData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
-                <YAxis stroke="hsl(var(--muted-foreground))" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '0.5rem',
-                  }}
-                />
-                <Line type="monotone" dataKey="engagement" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: 'hsl(var(--primary))' }} />
-              </LineChart>
-            </ResponsiveContainer>
+            {isLoading ? (
+              <div className="py-16 text-center text-muted-foreground">Loading analytics...</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart data={engagementData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" />
+                  <YAxis stroke="hsl(var(--muted-foreground))" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '0.5rem',
+                    }}
+                  />
+                  <Line type="monotone" dataKey="engagement" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: 'hsl(var(--primary))' }} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
-        {/* Platform Distribution */}
         <Card>
           <CardHeader>
-            <CardTitle>Platform Distribution</CardTitle>
-            <CardDescription>Reach by platform</CardDescription>
+            <CardTitle>Content Type Distribution</CardTitle>
+            <CardDescription>How the Instagram pipeline is split by format</CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie data={platformData} cx="50%" cy="50%" labelLine={false} label={(entry) => `${entry.name}: ${entry.value}%`} outerRadius={80} fill="#8884d8" dataKey="value">
-                  {platformData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: 'hsl(var(--card))',
-                    border: '1px solid hsl(var(--border))',
-                    borderRadius: '0.5rem',
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {isLoading ? (
+              <div className="py-16 text-center text-muted-foreground">Loading analytics...</div>
+            ) : (
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={contentTypeData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={(entry) => `${entry.name}: ${entry.value}`}
+                    outerRadius={80}
+                    dataKey="value"
+                  >
+                    {contentTypeData.map((entry) => (
+                      <Cell key={entry.name} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'hsl(var(--card))',
+                      border: '1px solid hsl(var(--border))',
+                      borderRadius: '0.5rem',
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
-        {/* Top Posts */}
         <Card>
           <CardHeader>
             <CardTitle>Top Performing Posts</CardTitle>
-            <CardDescription>Posts with highest engagement</CardDescription>
+            <CardDescription>Ranking based on likes from the shared post metrics</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {topPostsData.map((post, index) => (
-                <div key={index} className="space-y-2 border-b border-border pb-4 last:border-0 last:pb-0">
-                  <div className="flex items-center justify-between">
+              {topPostsData.map((post) => (
+                <div key={post.id} className="space-y-2 border-b border-border pb-4 last:border-0 last:pb-0">
+                  <div className="flex items-center justify-between gap-4">
                     <span className="font-medium text-sm">{post.title}</span>
-                    <span className="text-sm font-bold text-primary">{post.engagement.toLocaleString()}</span>
+                    <span className="text-sm font-bold text-primary">{post.metrics.likes.toLocaleString()}</span>
                   </div>
-                  <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full bg-primary"
                       style={{
-                        width: `${(post.engagement / Math.max(...topPostsData.map((p) => p.engagement))) * 100}%`,
+                        width: `${topPostsData.length > 0 ? (post.metrics.likes / Math.max(...topPostsData.map((item) => item.metrics.likes || 1))) * 100 : 0}%`,
                       }}
                     />
                   </div>
                 </div>
               ))}
+
+              {!isLoading && topPostsData.length === 0 && (
+                <p className="text-sm text-muted-foreground">No performance data available yet.</p>
+              )}
             </div>
           </CardContent>
         </Card>

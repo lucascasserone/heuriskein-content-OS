@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs'
@@ -12,58 +14,60 @@ import {
   DialogTrigger,
 } from '@/components/ui/Dialog'
 import { Plus, Calendar, FileText, CheckCircle, Archive } from 'lucide-react'
-import { useState } from 'react'
+import { InstagramPost, InstagramPostStatus, InstagramPostType } from '@/lib/content/types'
+import {
+  createInstagramPostRequest,
+  deleteInstagramPostRequest,
+  fetchInstagramPosts,
+  updateInstagramPostRequest,
+} from '@/lib/instagram/api'
 
-interface Post {
-  id: number
+type PostFormState = {
   caption: string
-  type: string
-  status: string
+  type: InstagramPostType
+  status: InstagramPostStatus
   date: string
 }
 
-export default function InstagramManager() {
-  const [posts, setPosts] = useState<Post[]>([
-    {
-      id: 1,
-      caption: 'Beautiful sunset over the mountains',
-      type: 'Image',
-      status: 'scheduled',
-      date: '2024-04-15',
-    },
-    {
-      id: 2,
-      caption: 'Product launch announcement',
-      type: 'Carousel',
-      status: 'draft',
-      date: '-',
-    },
-    {
-      id: 3,
-      caption: 'Monthly business update',
-      type: 'Video',
-      status: 'published',
-      date: '2024-04-08',
-    },
-    {
-      id: 4,
-      caption: 'Team culture highlights',
-      type: 'Reel',
-      status: 'scheduled',
-      date: '2024-04-16',
-    },
-  ])
+const emptyFormState: PostFormState = {
+  caption: '',
+  type: 'image',
+  status: 'draft',
+  date: '',
+}
 
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [formData, setFormData] = useState({
-    caption: '',
-    type: 'Image',
-    status: 'draft',
-    date: '',
+function toDateInputValue(value: string | null): string {
+  return value ? value.slice(0, 10) : ''
+}
+
+function formatPostType(value: InstagramPostType): string {
+  return value.charAt(0).toUpperCase() + value.slice(1)
+}
+
+function formatPostDate(post: InstagramPost): string {
+  const relevantDate = post.scheduledFor ?? post.publishedAt
+  if (!relevantDate) {
+    return '-'
+  }
+
+  return new Date(relevantDate).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
   })
+}
 
-  const postTypes = ['Image', 'Video', 'Carousel', 'Reel', 'Story']
-  const statuses = ['draft', 'scheduled', 'backlog', 'published']
+export default function InstagramManager() {
+  const [posts, setPosts] = useState<InstagramPost[]>([])
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [formData, setFormData] = useState<PostFormState>(emptyFormState)
+  const [editingPostId, setEditingPostId] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const postTypes: InstagramPostType[] = ['image', 'video', 'carousel', 'reel', 'story']
+  const statuses: InstagramPostStatus[] = ['draft', 'scheduled', 'backlog', 'published']
 
   const tabs = [
     {
@@ -72,7 +76,7 @@ export default function InstagramManager() {
       icon: Calendar,
     },
     {
-      id: 'drafts',
+      id: 'draft',
       label: 'Drafts',
       icon: FileText,
     },
@@ -86,7 +90,58 @@ export default function InstagramManager() {
       label: 'Backlog',
       icon: Archive,
     },
-  ]
+  ] as const
+
+  useEffect(() => {
+    let active = true
+
+    async function loadPosts() {
+      try {
+        const nextPosts = await fetchInstagramPosts()
+        if (active) {
+          setPosts(nextPosts)
+          setErrorMessage(null)
+        }
+      } catch (error) {
+        if (active) {
+          setErrorMessage(error instanceof Error ? error.message : 'Failed to load posts')
+        }
+      } finally {
+        if (active) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadPosts()
+
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const resetForm = () => {
+    setFormData(emptyFormState)
+    setEditingPostId(null)
+  }
+
+  const openCreateDialog = () => {
+    resetForm()
+    setErrorMessage(null)
+    setIsModalOpen(true)
+  }
+
+  const openEditDialog = (post: InstagramPost) => {
+    setEditingPostId(post.id)
+    setFormData({
+      caption: post.caption,
+      type: post.postType,
+      status: post.status,
+      date: toDateInputValue(post.scheduledFor ?? post.publishedAt),
+    })
+    setErrorMessage(null)
+    setIsModalOpen(true)
+  }
 
   const getTabCount = (tabId: string) => {
     return posts.filter((post) => post.status === tabId).length
@@ -96,28 +151,53 @@ export default function InstagramManager() {
     return posts.filter((post) => post.status === tabId)
   }
 
-  const handleAddPost = (e: React.FormEvent) => {
+  const handleAddPost = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!formData.caption.trim()) {
-      alert('Please enter a caption')
+      setErrorMessage('Please enter a caption')
       return
     }
 
-    const newPost: Post = {
-      id: Math.max(...posts.map((p) => p.id), 0) + 1,
-      caption: formData.caption,
-      type: formData.type,
-      status: formData.status,
-      date: formData.status === 'draft' || formData.status === 'backlog' ? '-' : formData.date,
-    }
+    try {
+      setIsSaving(true)
+      setErrorMessage(null)
 
-    setPosts([...posts, newPost])
-    setFormData({ caption: '', type: 'Image', status: 'draft', date: '' })
-    setIsModalOpen(false)
+      const payload = {
+        caption: formData.caption.trim(),
+        postType: formData.type,
+        status: formData.status,
+        scheduledFor: formData.status === 'scheduled' && formData.date ? formData.date : null,
+      }
+
+      const savedPost = editingPostId
+        ? await updateInstagramPostRequest(editingPostId, payload)
+        : await createInstagramPostRequest(payload)
+
+      setPosts((currentPosts) => {
+        if (editingPostId) {
+          return currentPosts.map((post) => (post.id === editingPostId ? savedPost : post))
+        }
+
+        return [savedPost, ...currentPosts]
+      })
+
+      resetForm()
+      setIsModalOpen(false)
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to save post')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  const handleDeletePost = (id: number) => {
-    setPosts(posts.filter((post) => post.id !== id))
+  const handleDeletePost = async (id: string) => {
+    try {
+      setErrorMessage(null)
+      await deleteInstagramPostRequest(id)
+      setPosts((currentPosts) => currentPosts.filter((post) => post.id !== id))
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to delete post')
+    }
   }
 
   return (
@@ -132,19 +212,25 @@ export default function InstagramManager() {
         </div>
         <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
+            <Button onClick={openCreateDialog} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
               <Plus className="h-4 w-4" />
               New Post
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle>Create New Post</DialogTitle>
+              <DialogTitle>{editingPostId ? 'Edit Post' : 'Create New Post'}</DialogTitle>
               <DialogDescription>
-                Add a new Instagram post to your content library
+                {editingPostId ? 'Update an existing Instagram post in your content library' : 'Add a new Instagram post to your content library'}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddPost} className="space-y-4">
+              {errorMessage && (
+                <div className="rounded-lg border border-red-500/30 bg-red-950/40 px-4 py-3 text-sm text-red-200">
+                  {errorMessage}
+                </div>
+              )}
+
               {/* Caption */}
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">
@@ -169,13 +255,13 @@ export default function InstagramManager() {
                 <select
                   value={formData.type}
                   onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, type: e.target.value }))
+                    setFormData((prev) => ({ ...prev, type: e.target.value as InstagramPostType }))
                   }
                   className="w-full rounded-lg border border-border bg-card px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   {postTypes.map((type) => (
                     <option key={type} value={type} className="bg-card text-foreground">
-                      {type}
+                      {formatPostType(type)}
                     </option>
                   ))}
                 </select>
@@ -189,7 +275,7 @@ export default function InstagramManager() {
                 <select
                   value={formData.status}
                   onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, status: e.target.value }))
+                    setFormData((prev) => ({ ...prev, status: e.target.value as InstagramPostStatus }))
                   }
                   className="w-full rounded-lg border border-border bg-card px-4 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 >
@@ -225,15 +311,19 @@ export default function InstagramManager() {
                   type="button"
                   variant="outline"
                   className="flex-1"
-                  onClick={() => setIsModalOpen(false)}
+                  onClick={() => {
+                    setIsModalOpen(false)
+                    resetForm()
+                  }}
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
+                  disabled={isSaving}
                   className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
                 >
-                  Create Post
+                  {isSaving ? 'Saving...' : editingPostId ? 'Save Changes' : 'Create Post'}
                 </Button>
               </div>
             </form>
@@ -261,12 +351,18 @@ export default function InstagramManager() {
         {/* Tab Contents */}
         {tabs.map((tab) => (
           <TabsContent key={tab.id} value={tab.id} className="space-y-4">
-            {getTabPosts(tab.id).length === 0 ? (
+            {isLoading ? (
+              <Card>
+                <CardContent className="py-12 text-center text-muted-foreground">
+                  Loading posts...
+                </CardContent>
+              </Card>
+            ) : getTabPosts(tab.id).length === 0 ? (
               <Card className="border-dashed">
                 <CardContent className="flex flex-col items-center justify-center py-12 text-center">
                   <p className="text-muted-foreground">No posts yet in this section</p>
                   <Button
-                    onClick={() => setIsModalOpen(true)}
+                    onClick={openCreateDialog}
                     className="mt-4 gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     <Plus className="h-4 w-4" />
@@ -284,7 +380,7 @@ export default function InstagramManager() {
                           <h3 className="font-semibold text-foreground">{post.caption}</h3>
                           <div className="flex flex-wrap gap-2">
                             <span className="inline-flex items-center rounded-full bg-blue-900/30 px-3 py-1 text-sm font-medium text-blue-200">
-                              {post.type}
+                              {formatPostType(post.postType)}
                             </span>
                             <span
                               className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${
@@ -302,9 +398,12 @@ export default function InstagramManager() {
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-sm font-medium text-foreground">{post.date}</p>
+                          <p className="text-sm font-medium text-foreground">{formatPostDate(post)}</p>
                           <div className="mt-3 flex gap-2">
-                            <button className="px-3 py-1 rounded text-sm bg-primary/20 hover:bg-primary/30 text-primary-foreground">
+                            <button
+                              onClick={() => openEditDialog(post)}
+                              className="px-3 py-1 rounded text-sm bg-primary/20 hover:bg-primary/30 text-primary-foreground"
+                            >
                               Edit
                             </button>
                             <button className="px-3 py-1 rounded text-sm bg-muted hover:bg-muted/80 text-foreground">
@@ -344,7 +443,11 @@ export default function InstagramManager() {
             <CardTitle className="text-sm font-medium">Avg. Engagement</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">4.2%</div>
+            <div className="text-2xl font-bold">
+              {posts.length > 0
+                ? `${(posts.reduce((total, post) => total + post.metrics.engagementRate, 0) / posts.length).toFixed(1)}%`
+                : '0.0%'}
+            </div>
             <p className="text-xs text-muted-foreground">Last 30 days</p>
           </CardContent>
         </Card>
@@ -353,7 +456,11 @@ export default function InstagramManager() {
             <CardTitle className="text-sm font-medium">Best Performer</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2.8K</div>
+            <div className="text-2xl font-bold">
+              {posts.length > 0
+                ? `${Math.max(...posts.map((post) => post.metrics.likes)).toLocaleString()}`
+                : '0'}
+            </div>
             <p className="text-xs text-muted-foreground">Likes on top post</p>
           </CardContent>
         </Card>

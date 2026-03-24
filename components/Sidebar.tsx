@@ -1,15 +1,24 @@
 'use client'
 
+import { useState } from 'react'
+
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutGrid,
   BarChart3,
   Calendar,
   TrendingUp,
   Newspaper,
+  LogOut,
 } from 'lucide-react'
+
 import { cn } from '@/lib/utils'
+import { createSupabaseBrowserClient } from '@/lib/supabase/client'
+
+type SidebarProps = {
+  userEmail: string | null
+}
 
 const navigation = [
   {
@@ -44,12 +53,31 @@ const navigation = [
   },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ userEmail }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
+  const [isSigningOut, setIsSigningOut] = useState(false)
+
+  async function handleSignOut() {
+    try {
+      setIsSigningOut(true)
+      const supabase = createSupabaseBrowserClient()
+      const { error } = await supabase.auth.signOut()
+
+      if (error) {
+        throw error
+      }
+
+      router.replace('/login')
+      router.refresh()
+    } finally {
+      setIsSigningOut(false)
+    }
+  }
 
   return (
-    <aside className="w-64 border-r border-border bg-card">
-      <nav className="space-y-1 p-4">
+    <aside className="relative flex w-64 flex-col border-r border-border bg-card">
+      <nav className="flex-1 space-y-1 p-4">
         {/* Logo/Brand */}
         <div className="mb-8 flex items-center gap-2 px-2 py-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -83,10 +111,22 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="absolute bottom-0 left-0 w-64 border-t border-border bg-card p-4">
-        <div className="text-xs text-muted-foreground">
+      <div className="border-t border-border bg-card p-4">
+        <div className="space-y-3 text-xs text-muted-foreground">
+          <div>
+            <p className="font-semibold text-foreground">{userEmail ?? 'Authenticated user'}</p>
+            <p>Private workspace session</p>
+          </div>
           <p className="font-semibold">v1.0.0</p>
-          <p>© 2024 Heuriskein</p>
+          <button
+            type="button"
+            onClick={handleSignOut}
+            disabled={isSigningOut}
+            className="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-50"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            {isSigningOut ? 'Signing out...' : 'Sign out'}
+          </button>
         </div>
       </div>
     </aside>
