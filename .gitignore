@@ -29,6 +29,9 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
+# Local git diagnostic artifacts
+.git-*.json
+
 # Editor directories and files
 .vscode/
 .idea/
