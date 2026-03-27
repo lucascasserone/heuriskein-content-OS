@@ -1,7 +1,7 @@
 'use client'
 
-import { Suspense } from 'react'
-import { FormEvent, useState } from 'react'
+import { Suspense, useState } from 'react'
+import type { FormEvent } from 'react'
 
 import { useRouter, useSearchParams } from 'next/navigation'
 
