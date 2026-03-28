@@ -90,7 +90,7 @@ export default function SocialHubPage() {
           accessToken: '',
         },
       }))
-      setMessage(`${platformLabel[platform]} connected successfully.`)
+      setMessage(`${platformLabel[platform]} API linked and ready for publishing.`)
       setError(null)
     } catch (connectError) {
       setError(connectError instanceof Error ? connectError.message : `Failed to connect ${platformLabel[platform]}`)
@@ -119,7 +119,7 @@ export default function SocialHubPage() {
         )
       )
 
-      setMessage(`${platformLabel[platform]} disconnected.`)
+      setMessage(`${platformLabel[platform]} API disconnected.`)
       setError(null)
     } catch (disconnectError) {
       setError(disconnectError instanceof Error ? disconnectError.message : `Failed to disconnect ${platformLabel[platform]}`)
@@ -134,12 +134,12 @@ export default function SocialHubPage() {
         <div>
           <h1 className="section-title">Social Hub</h1>
           <p className="mt-2 text-muted-foreground">
-            Manage API connections for Instagram, LinkedIn, YouTube, X and Facebook.
+            Link credentials for Instagram, LinkedIn, YouTube, X and Facebook.
           </p>
         </div>
         <Button type="button" variant="outline" className="gap-2" onClick={() => void loadConnections()} disabled={isLoading}>
           <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
+          Sync Status
         </Button>
       </div>
 
@@ -168,10 +168,10 @@ export default function SocialHubPage() {
                   {isConnected ? (
                     <>
                       <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                      Connected {connection?.accountId ? `(${connection.accountId})` : ''}
+                      API linked {connection?.accountId ? `(${connection.accountId})` : ''}
                     </>
                   ) : (
-                    'Not connected'
+                    'Credentials missing'
                   )}
                 </CardDescription>
               </CardHeader>
@@ -207,7 +207,7 @@ export default function SocialHubPage() {
                 />
                 <div className="flex gap-2">
                   <Button type="button" className="flex-1" disabled={isSaving} onClick={() => void handleConnect(platform)}>
-                    {isSaving ? 'Saving...' : isConnected ? 'Reconnect' : 'Connect'}
+                    {isSaving ? 'Saving...' : isConnected ? 'Relink API' : 'Link API'}
                   </Button>
                   <Button
                     type="button"
@@ -215,11 +215,11 @@ export default function SocialHubPage() {
                     disabled={isSaving || !isConnected}
                     onClick={() => void handleDisconnect(platform)}
                   >
-                    Disconnect
+                    Unlink API
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Publish mode: {connection?.mode ?? 'mock'}
+                  Delivery mode: {connection?.mode ?? 'mock'}
                 </p>
               </CardContent>
             </Card>

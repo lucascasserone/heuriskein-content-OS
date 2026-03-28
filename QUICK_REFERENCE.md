@@ -2,6 +2,10 @@
 
 **Heuriskein Content Dashboard** - Development Quick Reference
 
+## API Keys and Credentials
+
+- Social API keys manual: `SOCIAL_API_KEYS_MANUAL.md`
+
 ---
 
 ## 🚀 Quick Start Commands

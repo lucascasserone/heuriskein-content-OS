@@ -135,6 +135,10 @@ npm run lint
 npm test
 ```
 
+## 🔐 API Credentials Manual
+
+- Social network API keys guide: [SOCIAL_API_KEYS_MANUAL.md](SOCIAL_API_KEYS_MANUAL.md)
+
 ## 🎨 Customization
 
 ### Theme Colors

@@ -545,11 +545,11 @@ export default function InstagramManager() {
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted"
           >
             <Download className="h-4 w-4" />
-            Download Template
+            Get Import Template
           </a>
           <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-muted">
             <Upload className="h-4 w-4" />
-            Import Excel
+            Import Content File
             <input
               type="file"
               accept=".xlsx,.xls,.csv"
@@ -562,14 +562,14 @@ export default function InstagramManager() {
           <DialogTrigger asChild>
             <Button onClick={openCreateDialog} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
               <Plus className="h-4 w-4" />
-              New Post
+              Create Content
             </Button>
           </DialogTrigger>
           <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
             <DialogHeader>
-              <DialogTitle>{editingPostId ? 'Edit Post' : 'Create New Post'}</DialogTitle>
+              <DialogTitle>{editingPostId ? 'Update Content Item' : 'Create Content Item'}</DialogTitle>
               <DialogDescription>
-                {editingPostId ? 'Update an existing Instagram post in your content library' : 'Add a new Instagram post to your content library'}
+                {editingPostId ? 'Update an existing Instagram content item in your library' : 'Add a new Instagram content item to your publishing library'}
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleAddPost} className="space-y-4">
@@ -706,7 +706,7 @@ export default function InstagramManager() {
                   })}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Choose where this post will be published when you click Publish Now.
+                  Choose where this post will be published when you click Publish to Channels.
                 </p>
               </div>
 
@@ -746,7 +746,7 @@ export default function InstagramManager() {
                   disabled={isSaving}
                   className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
                 >
-                  {isSaving ? 'Saving...' : editingPostId ? 'Save Changes' : 'Create Post'}
+                  {isSaving ? 'Saving...' : editingPostId ? 'Apply Update' : 'Save Content'}
                 </Button>
               </div>
             </form>
@@ -823,7 +823,7 @@ export default function InstagramManager() {
             />
             <div className="flex gap-2">
               <Button type="submit" disabled={isConnecting} className="flex-1">
-                {isConnecting ? 'Connecting...' : 'Connect'}
+                {isConnecting ? 'Linking...' : 'Link Instagram API'}
               </Button>
               <Button
                 type="button"
@@ -833,7 +833,7 @@ export default function InstagramManager() {
                 className="gap-1"
               >
                 <Unplug className="h-3.5 w-3.5" />
-                Disconnect
+                Unlink Instagram API
               </Button>
             </div>
           </form>
@@ -943,7 +943,7 @@ export default function InstagramManager() {
                     className="mt-4 gap-2 bg-primary text-primary-foreground hover:bg-primary/90"
                   >
                     <Plus className="h-4 w-4" />
-                    Create First Post
+                    Create First Content Item
                   </Button>
                 </CardContent>
               </Card>
@@ -1038,7 +1038,7 @@ export default function InstagramManager() {
                                 className="inline-flex items-center gap-1 rounded px-3 py-1 text-sm bg-emerald-900/20 hover:bg-emerald-900/40 text-emerald-200 disabled:opacity-60"
                               >
                                 <Send className="h-3.5 w-3.5" />
-                                {publishingPostId === post.id ? 'Publishing...' : 'Publish Now'}
+                                {publishingPostId === post.id ? 'Publishing...' : 'Publish to Channels'}
                               </button>
                             )}
                             <button
@@ -1046,7 +1046,7 @@ export default function InstagramManager() {
                               onClick={() => openEditDialog(post)}
                               className="px-3 py-1 rounded text-sm bg-primary/20 hover:bg-primary/30 text-primary-foreground"
                             >
-                              Edit
+                              Improve
                             </button>
                             <button
                               type="button"
@@ -1054,14 +1054,14 @@ export default function InstagramManager() {
                               className="inline-flex items-center gap-1 px-3 py-1 rounded text-sm bg-muted hover:bg-muted/80 text-foreground"
                             >
                               <Eye className="h-3.5 w-3.5" />
-                              Preview
+                              View Preview
                             </button>
                             <button
                               type="button"
                               onClick={() => handleDeletePost(post.id)}
                               className="px-2 py-1 rounded text-sm bg-red-900/20 hover:bg-red-900/40 text-red-200"
                             >
-                              Delete
+                              Remove
                             </button>
                           </div>
                         </div>

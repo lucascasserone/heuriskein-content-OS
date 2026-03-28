@@ -181,7 +181,7 @@ export default function Sidebar({ userEmail, isCollapsed, isMobileOpen, onCloseM
             )}
           >
             <LogOut className="h-3.5 w-3.5" />
-            <span className={cn(isCollapsed && 'lg:hidden')}>{isSigningOut ? 'Signing out...' : 'Sign out'}</span>
+            <span className={cn(isCollapsed && 'lg:hidden')}>{isSigningOut ? 'Exiting...' : 'Exit Workspace'}</span>
           </button>
         </div>
       </div>
