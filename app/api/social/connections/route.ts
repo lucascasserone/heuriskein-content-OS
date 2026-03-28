@@ -1,12 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
-import { connectInstagram, listSocialConnections } from '@/lib/social/repository'
+import { connectSocialPlatform, listSocialConnections } from '@/lib/social/repository'
 import { AUTH_REQUIRED_ERROR_MESSAGE } from '@/lib/supabase/config'
+import { SUPPORTED_SOCIAL_PLATFORMS } from '@/lib/social/types'
 
 const connectSchema = z.object({
-  platform: z.literal('instagram'),
-  instagramUserId: z.string().trim().min(1, 'Instagram User ID is required.'),
+  platform: z.enum(SUPPORTED_SOCIAL_PLATFORMS as [
+    'instagram',
+    'linkedin',
+    'youtube',
+    'x',
+    'facebook',
+  ]),
+  accountId: z.string().trim().min(1, 'Account ID is required.'),
   accessToken: z.string().trim().min(1, 'Access token is required.'),
 })
 
@@ -28,7 +35,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const payload = connectSchema.parse(body)
 
-    const connection = await connectInstagram(payload)
+    const connection = await connectSocialPlatform(payload)
     return NextResponse.json({ connection })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Failed to connect social account'

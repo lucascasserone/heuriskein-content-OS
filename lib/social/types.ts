@@ -1,4 +1,4 @@
-export type SocialPlatform = 'instagram'
+export type SocialPlatform = 'instagram' | 'linkedin' | 'youtube' | 'x' | 'facebook'
 
 export type ConnectionMode = 'mock' | 'api'
 
@@ -6,13 +6,15 @@ export interface SocialConnection {
   platform: SocialPlatform
   isConnected: boolean
   mode: ConnectionMode
+  accountId: string | null
   instagramUserId: string | null
   connectedAt: string | null
   updatedAt: string
 }
 
-export interface ConnectInstagramInput {
-  instagramUserId: string
+export interface ConnectSocialInput {
+  platform: SocialPlatform
+  accountId: string
   accessToken: string
 }
 
@@ -29,3 +31,11 @@ export interface PublishSocialPostResult {
   mode: ConnectionMode
   message: string
 }
+
+export const SUPPORTED_SOCIAL_PLATFORMS: SocialPlatform[] = [
+  'instagram',
+  'linkedin',
+  'youtube',
+  'x',
+  'facebook',
+]

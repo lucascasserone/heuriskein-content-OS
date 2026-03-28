@@ -5,7 +5,7 @@ import type { FormEvent } from 'react'
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { TrendingDown, TrendingUp, RefreshCw } from 'lucide-react'
+import { TrendingDown, TrendingUp, RefreshCw, UserPlus, Activity } from 'lucide-react'
 import {
   Competitor,
   CompetitorHistoryPoint,
@@ -391,114 +391,137 @@ export default function CompetitorTracker() {
         </Card>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
-      <Card className="h-fit xl:sticky xl:top-6">
+      <div className="grid gap-6 xl:grid-cols-[390px_1fr]">
+      <Card className="h-fit overflow-hidden border-primary/20 xl:sticky xl:top-6">
         <CardHeader>
-          <CardTitle>{editingCompetitorId ? 'Edit Competitor' : 'Add Competitor'}</CardTitle>
-          <CardDescription>Create or update a competitor profile and metrics.</CardDescription>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-primary/20 text-primary">
+              <UserPlus className="h-4 w-4" />
+            </span>
+            <div>
+              <CardTitle className="text-lg">{editingCompetitorId ? 'Edit Competitor' : 'Add Competitor'}</CardTitle>
+              <CardDescription>Create or update a competitor profile with key metrics.</CardDescription>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="grid gap-3">
-            <input
-              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-              placeholder="Competitor name"
-              value={formState.name}
-              onChange={(event) => setFormState((prev) => ({ ...prev, name: event.target.value }))}
-              required
-            />
-            <input
-              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-              placeholder="@handle"
-              value={formState.handle}
-              onChange={(event) => setFormState((prev) => ({ ...prev, handle: event.target.value }))}
-              required
-            />
-            <select
-              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-              value={formState.platform}
-              onChange={(event) =>
-                setFormState((prev) => ({ ...prev, platform: event.target.value as FormState['platform'] }))
-              }
-            >
-              <option value="instagram">Instagram</option>
-              <option value="tiktok">TikTok</option>
-              <option value="youtube">YouTube</option>
-              <option value="linkedin">LinkedIn</option>
-            </select>
-            <input
-              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-              type="number"
-              placeholder="Followers"
-              value={formState.followers}
-              onChange={(event) => setFormState((prev) => ({ ...prev, followers: event.target.value }))}
-            />
-            <input
-              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-              type="number"
-              step="0.01"
-              placeholder="Growth Rate %"
-              value={formState.followerGrowthRate}
-              onChange={(event) => setFormState((prev) => ({ ...prev, followerGrowthRate: event.target.value }))}
-            />
-            <input
-              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-              type="number"
-              placeholder="Monthly Follower Change"
-              value={formState.monthlyFollowerChange}
-              onChange={(event) => setFormState((prev) => ({ ...prev, monthlyFollowerChange: event.target.value }))}
-            />
-            <input
-              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-              type="number"
-              step="0.01"
-              placeholder="Avg Engagement Rate %"
-              value={formState.avgEngagementRate}
-              onChange={(event) => setFormState((prev) => ({ ...prev, avgEngagementRate: event.target.value }))}
-            />
-            <input
-              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-              type="number"
-              placeholder="Avg Engagement Count"
-              value={formState.avgEngagementCount}
-              onChange={(event) => setFormState((prev) => ({ ...prev, avgEngagementCount: event.target.value }))}
-            />
-            <input
-              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-              type="number"
-              placeholder="Total Posts"
-              value={formState.totalPosts}
-              onChange={(event) => setFormState((prev) => ({ ...prev, totalPosts: event.target.value }))}
-            />
-            <input
-              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-              type="number"
-              step="0.01"
-              placeholder="Avg Posts per Week"
-              value={formState.avgPostsPerWeek}
-              onChange={(event) => setFormState((prev) => ({ ...prev, avgPostsPerWeek: event.target.value }))}
-            />
-            <input
-              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-              type="number"
-              step="0.01"
-              placeholder="Response Time (hours)"
-              value={formState.responseTime}
-              onChange={(event) => setFormState((prev) => ({ ...prev, responseTime: event.target.value }))}
-            />
-            <input
-              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-              type="number"
-              placeholder="Top Post Engagement"
-              value={formState.topPostEngage}
-              onChange={(event) => setFormState((prev) => ({ ...prev, topPostEngage: event.target.value }))}
-            />
-            <input
-              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-              placeholder="Top post caption"
-              value={formState.topPostCaption}
-              onChange={(event) => setFormState((prev) => ({ ...prev, topPostCaption: event.target.value }))}
-              required
-            />
+            <div className="rounded-lg border border-border/80 bg-muted/20 p-3">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Profile</p>
+              <div className="grid gap-2">
+                <input
+                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                  placeholder="Competitor name"
+                  value={formState.name}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, name: event.target.value }))}
+                  required
+                />
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input
+                    className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                    placeholder="@handle"
+                    value={formState.handle}
+                    onChange={(event) => setFormState((prev) => ({ ...prev, handle: event.target.value }))}
+                    required
+                  />
+                  <select
+                    className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                    value={formState.platform}
+                    onChange={(event) =>
+                      setFormState((prev) => ({ ...prev, platform: event.target.value as FormState['platform'] }))
+                    }
+                  >
+                    <option value="instagram">Instagram</option>
+                    <option value="tiktok">TikTok</option>
+                    <option value="youtube">YouTube</option>
+                    <option value="linkedin">LinkedIn</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-lg border border-border/80 bg-muted/20 p-3">
+              <p className="mb-3 flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                <Activity className="h-3.5 w-3.5" />
+                Performance Metrics
+              </p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <input
+                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                  type="number"
+                  placeholder="Followers"
+                  value={formState.followers}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, followers: event.target.value }))}
+                />
+                <input
+                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                  type="number"
+                  step="0.01"
+                  placeholder="Growth Rate %"
+                  value={formState.followerGrowthRate}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, followerGrowthRate: event.target.value }))}
+                />
+                <input
+                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                  type="number"
+                  placeholder="Monthly Follower Change"
+                  value={formState.monthlyFollowerChange}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, monthlyFollowerChange: event.target.value }))}
+                />
+                <input
+                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                  type="number"
+                  step="0.01"
+                  placeholder="Avg Engagement Rate %"
+                  value={formState.avgEngagementRate}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, avgEngagementRate: event.target.value }))}
+                />
+                <input
+                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                  type="number"
+                  placeholder="Avg Engagement Count"
+                  value={formState.avgEngagementCount}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, avgEngagementCount: event.target.value }))}
+                />
+                <input
+                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                  type="number"
+                  placeholder="Total Posts"
+                  value={formState.totalPosts}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, totalPosts: event.target.value }))}
+                />
+                <input
+                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                  type="number"
+                  step="0.01"
+                  placeholder="Avg Posts per Week"
+                  value={formState.avgPostsPerWeek}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, avgPostsPerWeek: event.target.value }))}
+                />
+                <input
+                  className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                  type="number"
+                  step="0.01"
+                  placeholder="Response Time (hours)"
+                  value={formState.responseTime}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, responseTime: event.target.value }))}
+                />
+                <input
+                  className="h-10 rounded-md border border-border bg-background px-3 text-sm sm:col-span-2"
+                  type="number"
+                  placeholder="Top Post Engagement"
+                  value={formState.topPostEngage}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, topPostEngage: event.target.value }))}
+                />
+                <input
+                  className="h-10 rounded-md border border-border bg-background px-3 text-sm sm:col-span-2"
+                  placeholder="Top post caption"
+                  value={formState.topPostCaption}
+                  onChange={(event) => setFormState((prev) => ({ ...prev, topPostCaption: event.target.value }))}
+                  required
+                />
+              </div>
+            </div>
             <div className="flex gap-2 pt-2">
               <Button type="submit" disabled={isSaving}>
                 {isSaving ? 'Saving...' : editingCompetitorId ? 'Update Competitor' : 'Create Competitor'}
@@ -639,57 +662,61 @@ export default function CompetitorTracker() {
                       : 'border-border hover:border-primary/50'
                   }`}
                 >
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                    <div>
-                      <p className="font-semibold text-foreground">{competitor.name}</p>
-                      <p className="text-xs text-muted-foreground">{competitor.handle}</p>
-                    </div>
+                  <div className="space-y-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-foreground">{competitor.name}</p>
+                        <p className="text-xs text-muted-foreground">{competitor.handle}</p>
+                      </div>
 
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Followers</p>
-                      <p className="font-semibold text-foreground">{(competitor.metrics.followers / 1000).toFixed(0)}K</p>
-                      <div className="flex items-center gap-1 text-xs">
-                        {competitor.metrics.monthlyFollowerChange > 0 ? (
-                          <>
-                            <TrendingUp className="h-3 w-3 text-green-500" />
-                            <span className="text-green-500">+{(competitor.metrics.monthlyFollowerChange / 1000).toFixed(1)}K</span>
-                          </>
-                        ) : (
-                          <>
-                            <TrendingDown className="h-3 w-3 text-red-500" />
-                            <span className="text-red-500">{(competitor.metrics.monthlyFollowerChange / 1000).toFixed(1)}K</span>
-                          </>
-                        )}
+                      <div className="flex items-center gap-2">
+                        <Button size="sm" variant="outline" onClick={() => { void handleSelectCompetitor(competitor.id) }}>
+                          History
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleStartEdit(competitor)}>
+                          Edit
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => { void handleDelete(competitor) }}>
+                          Delete
+                        </Button>
                       </div>
                     </div>
 
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Avg Engagement</p>
-                      <p className="font-semibold text-foreground">{competitor.metrics.avgEngagementRate}%</p>
-                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">Followers</p>
+                        <p className="font-semibold text-foreground">{(competitor.metrics.followers / 1000).toFixed(0)}K</p>
+                        <div className="flex items-center gap-1 text-xs">
+                          {competitor.metrics.monthlyFollowerChange > 0 ? (
+                            <>
+                              <TrendingUp className="h-3 w-3 text-green-500" />
+                              <span className="text-green-500">+{(competitor.metrics.monthlyFollowerChange / 1000).toFixed(1)}K</span>
+                            </>
+                          ) : (
+                            <>
+                              <TrendingDown className="h-3 w-3 text-red-500" />
+                              <span className="text-red-500">{(competitor.metrics.monthlyFollowerChange / 1000).toFixed(1)}K</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
 
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Posts</p>
-                      <p className="font-semibold text-foreground">{competitor.metrics.totalPosts}</p>
-                    </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">Avg Engagement</p>
+                        <p className="font-semibold text-foreground">{competitor.metrics.avgEngagementRate}%</p>
+                      </div>
 
-                    <div className="space-y-1">
-                      <p className="text-xs font-medium text-muted-foreground">Growth</p>
-                      <p className={competitor.metrics.followerGrowthRate > 0 ? 'text-green-500 font-semibold' : 'text-red-500 font-semibold'}>
-                        {competitor.metrics.followerGrowthRate > 0 ? '+' : ''}{competitor.metrics.followerGrowthRate}%
-                      </p>
-                    </div>
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">Posts</p>
+                        <p className="font-semibold text-foreground">{competitor.metrics.totalPosts}</p>
+                      </div>
 
-                    <div className="flex items-end justify-end gap-2 lg:col-span-1">
-                      <Button size="sm" variant="outline" onClick={() => { void handleSelectCompetitor(competitor.id) }}>
-                        History
-                      </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleStartEdit(competitor)}>
-                        Edit
-                      </Button>
-                      <Button size="sm" variant="destructive" onClick={() => { void handleDelete(competitor) }}>
-                        Delete
-                      </Button>
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-muted-foreground">Growth</p>
+                        <p className={competitor.metrics.followerGrowthRate > 0 ? 'text-green-500 font-semibold' : 'text-red-500 font-semibold'}>
+                          {competitor.metrics.followerGrowthRate > 0 ? '+' : ''}{competitor.metrics.followerGrowthRate}%
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>

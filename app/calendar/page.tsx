@@ -165,7 +165,7 @@ export default function ContentCalendar() {
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
   return (
-    <div className="space-y-8 p-8">
+    <div className="space-y-8 p-4 sm:p-6 lg:p-8">
       <div>
         <h1 className="section-title">Content Calendar</h1>
         <p className="mt-2 text-muted-foreground">

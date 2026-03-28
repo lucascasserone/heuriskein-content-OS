@@ -20,20 +20,29 @@ export async function fetchSocialConnections(): Promise<SocialConnection[]> {
   return payload.connections
 }
 
-export async function connectInstagramAccount(input: { instagramUserId: string; accessToken: string }): Promise<SocialConnection> {
+export async function connectSocialPlatform(input: {
+  platform: SocialPlatform
+  accountId: string
+  accessToken: string
+}): Promise<SocialConnection> {
   const response = await fetch('/api/social/connections', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      platform: 'instagram',
-      ...input,
-    }),
+    body: JSON.stringify(input),
   })
 
   const payload = await parseResponse<{ connection: SocialConnection }>(response)
   return payload.connection
+}
+
+export async function connectInstagramAccount(input: { instagramUserId: string; accessToken: string }): Promise<SocialConnection> {
+  return connectSocialPlatform({
+    platform: 'instagram',
+    accountId: input.instagramUserId,
+    accessToken: input.accessToken,
+  })
 }
 
 export async function disconnectSocialPlatform(platform: SocialPlatform): Promise<void> {
