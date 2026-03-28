@@ -2,7 +2,7 @@
 
 A modern, feature-rich content management dashboard for multi-platform content creators and brands. Built with Next.js 14, Tailwind CSS, and shadcn/ui components.
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)
 ![License](https://img.shields.io/badge/license-MIT-green.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D18.0.0-brightgreen.svg)
 
@@ -12,6 +12,9 @@ A modern, feature-rich content management dashboard for multi-platform content c
 - Manage scheduled posts, drafts, and published content
 - Organize posts by status with detailed metadata
 - Quick edit and preview actions
+- Import posts from template (CSV/XLSX)
+- Download ready-to-use import template
+- Connect Instagram account and publish directly from dashboard (MVP)
 - Performance metrics tracking
 
 ### 📊 Analytics Dashboard
@@ -40,6 +43,8 @@ A modern, feature-rich content management dashboard for multi-platform content c
 - Multi-category news feeds (Trends, Product Updates, Insights)
 - Hashtag-based content discovery
 - Save and share functionality
+- Backend-driven manual and automatic feed refresh
+- Live update timestamp and dynamic trending topics
 - Trending topics widget
 - Newsletter subscriptions
 
