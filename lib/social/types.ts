@@ -32,6 +32,27 @@ export interface PublishSocialPostResult {
   message: string
 }
 
+export interface PublishSocialPostBatchResult {
+  postId: string
+  results: PublishSocialPostResult[]
+  failedPlatforms: Array<{
+    platform: SocialPlatform
+    error: string
+  }>
+}
+
+export interface SocialAccessMetrics {
+  platform: SocialPlatform
+  impressions: number
+  reach: number
+  clicks: number
+  engagements: number
+  engagementRate: number
+  mode: ConnectionMode
+  isConnected: boolean
+  recordedAt: string
+}
+
 export const SUPPORTED_SOCIAL_PLATFORMS: SocialPlatform[] = [
   'instagram',
   'linkedin',

@@ -25,16 +25,23 @@ import {
 import {
   connectInstagramAccount,
   disconnectSocialPlatform,
+  fetchSocialAccessMetrics,
   fetchSocialConnections,
-  publishPostToSocial,
+  publishPostToPlatforms,
 } from '@/lib/social/api'
-import { SocialConnection } from '@/lib/social/types'
+import {
+  SocialAccessMetrics,
+  SocialConnection,
+  SocialPlatform,
+  SUPPORTED_SOCIAL_PLATFORMS,
+} from '@/lib/social/types'
 
 type PostFormState = {
   caption: string
   link: string
   attachments: string
   tags: string
+  targetPlatforms: SocialPlatform[]
   type: InstagramPostType
   status: InstagramPostStatus
   date: string
@@ -45,9 +52,18 @@ const emptyFormState: PostFormState = {
   link: '',
   attachments: '',
   tags: '',
+  targetPlatforms: ['instagram'],
   type: 'image',
   status: 'draft',
   date: '',
+}
+
+const SOCIAL_PLATFORM_LABELS: Record<SocialPlatform, string> = {
+  instagram: 'Instagram',
+  linkedin: 'LinkedIn',
+  youtube: 'YouTube',
+  x: 'X',
+  facebook: 'Facebook',
 }
 
 function parseCsvValues(raw: string): string[] {
@@ -107,7 +123,9 @@ export default function InstagramManager() {
   const [isSaving, setIsSaving] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
-  const [connection, setConnection] = useState<SocialConnection | null>(null)
+  const [connections, setConnections] = useState<SocialConnection[]>([])
+  const [socialMetrics, setSocialMetrics] = useState<SocialAccessMetrics[]>([])
+  const [postTargets, setPostTargets] = useState<Record<string, SocialPlatform[]>>({})
   const [connectionUserId, setConnectionUserId] = useState('')
   const [connectionToken, setConnectionToken] = useState('')
   const [isConnecting, setIsConnecting] = useState(false)
@@ -138,6 +156,14 @@ export default function InstagramManager() {
       icon: Archive,
     },
   ] as const
+
+  const connectedPlatforms = connections
+    .filter((item) => item.isConnected)
+    .map((item) => item.platform)
+
+  const instagramConnection = connections.find((item) => item.platform === 'instagram') ?? null
+
+  const defaultTargets: SocialPlatform[] = connectedPlatforms.length > 0 ? connectedPlatforms : ['instagram']
 
   useEffect(() => {
     let active = true
@@ -172,11 +198,25 @@ export default function InstagramManager() {
 
     async function loadConnections() {
       try {
-        const connections = await fetchSocialConnections()
-        const instagramConnection = connections.find((item) => item.platform === 'instagram') ?? null
+        const [nextConnections, nextMetrics] = await Promise.all([
+          fetchSocialConnections(),
+          fetchSocialAccessMetrics(),
+        ])
 
         if (active) {
-          setConnection(instagramConnection)
+          setConnections(nextConnections)
+          setSocialMetrics(nextMetrics)
+
+          const nextDefaultTargets = nextConnections
+            .filter((item) => item.isConnected)
+            .map((item) => item.platform)
+
+          if (nextDefaultTargets.length > 0) {
+            setFormData((prev) => ({
+              ...prev,
+              targetPlatforms: nextDefaultTargets,
+            }))
+          }
         }
       } catch (error) {
         if (active) {
@@ -193,7 +233,10 @@ export default function InstagramManager() {
   }, [])
 
   const resetForm = () => {
-    setFormData(emptyFormState)
+    setFormData({
+      ...emptyFormState,
+      targetPlatforms: defaultTargets,
+    })
     setEditingPostId(null)
   }
 
@@ -210,6 +253,7 @@ export default function InstagramManager() {
       link: post.link ?? '',
       attachments: (post.attachments ?? []).join(', '),
       tags: (post.tags ?? []).join(', '),
+      targetPlatforms: postTargets[post.id] ?? defaultTargets,
       type: post.postType,
       status: post.status,
       date: toDateInputValue(post.scheduledFor ?? post.publishedAt),
@@ -251,6 +295,8 @@ export default function InstagramManager() {
         ? await updateInstagramPostRequest(editingPostId, payload)
         : await createInstagramPostRequest(payload)
 
+      const selectedTargets = formData.targetPlatforms.length > 0 ? formData.targetPlatforms : defaultTargets
+
       setPosts((currentPosts) => {
         if (editingPostId) {
           return currentPosts.map((post) => (post.id === editingPostId ? savedPost : post))
@@ -258,6 +304,11 @@ export default function InstagramManager() {
 
         return [savedPost, ...currentPosts]
       })
+
+      setPostTargets((current) => ({
+        ...current,
+        [savedPost.id]: selectedTargets,
+      }))
 
       resetForm()
       setIsModalOpen(false)
@@ -354,7 +405,12 @@ export default function InstagramManager() {
         accessToken: connectionToken.trim(),
       })
 
-      setConnection(nextConnection)
+      setConnections((current) => {
+        const otherPlatforms = current.filter((item) => item.platform !== 'instagram')
+        return [...otherPlatforms, nextConnection]
+      })
+      const nextMetrics = await fetchSocialAccessMetrics()
+      setSocialMetrics(nextMetrics)
       setConnectionToken('')
       setErrorMessage(null)
       setSuccessMessage('Instagram connection configured successfully.')
@@ -369,7 +425,22 @@ export default function InstagramManager() {
     try {
       setIsConnecting(true)
       await disconnectSocialPlatform('instagram')
-      setConnection((current) => (current ? { ...current, isConnected: false, instagramUserId: null } : null))
+      setConnections((current) =>
+        current.map((item) =>
+          item.platform === 'instagram'
+            ? {
+                ...item,
+                isConnected: false,
+                accountId: null,
+                instagramUserId: null,
+                connectedAt: null,
+                mode: 'mock',
+              }
+            : item
+        )
+      )
+      const nextMetrics = await fetchSocialAccessMetrics()
+      setSocialMetrics(nextMetrics)
       setErrorMessage(null)
       setSuccessMessage('Instagram connection disconnected.')
     } catch (error) {
@@ -381,8 +452,22 @@ export default function InstagramManager() {
 
   const handlePublishPost = async (postId: string) => {
     try {
+      const requestedPlatforms = postTargets[postId] ?? defaultTargets
+      const connectedSet = new Set(connectedPlatforms)
+      const targetPlatforms = requestedPlatforms.filter((platform) => connectedSet.has(platform))
+
+      if (targetPlatforms.length === 0) {
+        setErrorMessage('Select at least one connected platform before publishing.')
+        return
+      }
+
       setPublishingPostId(postId)
-      const result = await publishPostToSocial(postId, 'instagram')
+      const result = await publishPostToPlatforms(postId, targetPlatforms)
+
+      if (result.results.length === 0) {
+        const firstError = result.failedPlatforms[0]?.error ?? 'Failed to publish post'
+        throw new Error(firstError)
+      }
 
       setPosts((currentPosts) =>
         currentPosts.map((post) =>
@@ -390,20 +475,57 @@ export default function InstagramManager() {
             ? {
                 ...post,
                 status: 'published',
-                publishedAt: result.publishedAt,
+                publishedAt: result.results[0].publishedAt,
                 scheduledFor: null,
               }
             : post
         )
       )
 
+      const nextMetrics = await fetchSocialAccessMetrics()
+      setSocialMetrics(nextMetrics)
+
       setErrorMessage(null)
-      setSuccessMessage(result.message)
+      const publishedOn = result.results.map((item) => SOCIAL_PLATFORM_LABELS[item.platform]).join(', ')
+      const failedOn = result.failedPlatforms.map((item) => SOCIAL_PLATFORM_LABELS[item.platform]).join(', ')
+      setSuccessMessage(
+        failedOn
+          ? `Post published on ${publishedOn}. Failed on: ${failedOn}.`
+          : `Post published on ${publishedOn}.`
+      )
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to publish post')
     } finally {
       setPublishingPostId(null)
     }
+  }
+
+  const toggleFormTargetPlatform = (platform: SocialPlatform) => {
+    setFormData((prev) => {
+      const alreadySelected = prev.targetPlatforms.includes(platform)
+      const nextTargets = alreadySelected
+        ? prev.targetPlatforms.filter((item) => item !== platform)
+        : [...prev.targetPlatforms, platform]
+
+      return {
+        ...prev,
+        targetPlatforms: nextTargets,
+      }
+    })
+  }
+
+  const togglePostTargetPlatform = (postId: string, platform: SocialPlatform) => {
+    setPostTargets((current) => {
+      const currentTargets = current[postId] ?? defaultTargets
+      const nextTargets = currentTargets.includes(platform)
+        ? currentTargets.filter((item) => item !== platform)
+        : [...currentTargets, platform]
+
+      return {
+        ...current,
+        [postId]: nextTargets,
+      }
+    })
   }
 
   return (
@@ -555,6 +677,39 @@ export default function InstagramManager() {
                 />
               </div>
 
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Publish Platforms</label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {SUPPORTED_SOCIAL_PLATFORMS.map((platform) => {
+                    const isConnected = connections.some((item) => item.platform === platform && item.isConnected)
+                    const isSelected = formData.targetPlatforms.includes(platform)
+
+                    return (
+                      <label
+                        key={`form-target-${platform}`}
+                        className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                          isConnected
+                            ? 'border-border bg-background text-foreground'
+                            : 'border-border/60 bg-muted/30 text-muted-foreground'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleFormTargetPlatform(platform)}
+                          className="h-4 w-4 rounded border-border"
+                        />
+                        <span>{SOCIAL_PLATFORM_LABELS[platform]}</span>
+                        {!isConnected && <span className="ml-auto text-[10px] uppercase tracking-wide">Not connected</span>}
+                      </label>
+                    )
+                  })}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Choose where this post will be published when you click Publish Now.
+                </p>
+              </div>
+
               {/* Scheduled Date */}
               {formData.status === 'scheduled' && (
                 <div className="space-y-2">
@@ -624,20 +779,33 @@ export default function InstagramManager() {
             <span className="text-muted-foreground">Status:</span>
             <span
               className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${
-                connection?.isConnected
+                connectedPlatforms.length > 0
                   ? 'bg-emerald-900/30 text-emerald-200'
                   : 'bg-yellow-900/30 text-yellow-200'
               }`}
             >
-              {connection?.isConnected ? 'Connected' : 'Not connected'}
+              {connectedPlatforms.length > 0 ? `${connectedPlatforms.length} connected` : 'Not connected'}
             </span>
-            {connection?.instagramUserId && (
-              <span className="text-xs text-muted-foreground">User ID: {connection.instagramUserId}</span>
+            {instagramConnection?.instagramUserId && (
+              <span className="text-xs text-muted-foreground">Instagram User ID: {instagramConnection.instagramUserId}</span>
             )}
-            {connection?.mode && (
-              <span className="text-xs text-muted-foreground">Publish mode: {connection.mode}</span>
+            {instagramConnection?.mode && (
+              <span className="text-xs text-muted-foreground">Instagram publish mode: {instagramConnection.mode}</span>
             )}
           </div>
+
+          {connectedPlatforms.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {connectedPlatforms.map((platform) => (
+                <span
+                  key={`connected-${platform}`}
+                  className="inline-flex items-center rounded-full bg-emerald-900/20 px-2 py-1 text-xs font-medium text-emerald-200"
+                >
+                  {SOCIAL_PLATFORM_LABELS[platform]}
+                </span>
+              ))}
+            </div>
+          )}
 
           <form onSubmit={handleConnectInstagram} className="grid gap-3 md:grid-cols-3">
             <input
@@ -660,7 +828,7 @@ export default function InstagramManager() {
               <Button
                 type="button"
                 variant="outline"
-                disabled={isConnecting || !connection?.isConnected}
+                disabled={isConnecting || !instagramConnection?.isConnected}
                 onClick={() => void handleDisconnectInstagram()}
                 className="gap-1"
               >
@@ -672,6 +840,37 @@ export default function InstagramManager() {
           <p className="text-xs text-muted-foreground">
             To publish directly via Instagram Graph API, set SOCIAL_PUBLISH_MODE=api and configure a valid Instagram User ID + Access Token.
           </p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Access Indicators by Platform</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {socialMetrics.map((metric) => (
+              <div key={`metric-${metric.platform}`} className="rounded-lg border border-border bg-background p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-sm font-semibold text-foreground">{SOCIAL_PLATFORM_LABELS[metric.platform]}</p>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                      metric.isConnected ? 'bg-emerald-900/30 text-emerald-200' : 'bg-muted text-muted-foreground'
+                    }`}
+                  >
+                    {metric.isConnected ? 'Connected' : 'Mock'}
+                  </span>
+                </div>
+                <div className="space-y-1 text-xs text-muted-foreground">
+                  <p>Impressions: {metric.impressions.toLocaleString()}</p>
+                  <p>Reach: {metric.reach.toLocaleString()}</p>
+                  <p>Clicks: {metric.clicks.toLocaleString()}</p>
+                  <p>Engagements: {metric.engagements.toLocaleString()}</p>
+                  <p>Engagement Rate: {metric.engagementRate.toFixed(2)}%</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -750,7 +949,11 @@ export default function InstagramManager() {
               </Card>
             ) : (
               <div className="grid gap-4">
-                {getTabPosts(tab.id).map((post) => (
+                {getTabPosts(tab.id).map((post) => {
+                  const selectedTargets = postTargets[post.id] ?? defaultTargets
+                  const selectedConnectedTargets = selectedTargets.filter((platform) => connectedPlatforms.includes(platform))
+
+                  return (
                   <Card key={post.id} className="hover:border-primary/50 transition-colors">
                     <CardContent className="pt-6">
                       <div className="flex items-start justify-between gap-4">
@@ -798,6 +1001,31 @@ export default function InstagramManager() {
                               Attachments: {post.attachments?.length}
                             </p>
                           )}
+                          <div className="flex flex-wrap items-center gap-1 pt-1">
+                            <span className="mr-1 text-[11px] uppercase tracking-wide text-muted-foreground">Targets</span>
+                            {SUPPORTED_SOCIAL_PLATFORMS.map((platform) => {
+                              const isConnected = connectedPlatforms.includes(platform)
+                              if (!isConnected) {
+                                return null
+                              }
+
+                              const isSelected = selectedTargets.includes(platform)
+                              return (
+                                <button
+                                  key={`${post.id}-target-${platform}`}
+                                  type="button"
+                                  onClick={() => togglePostTargetPlatform(post.id, platform)}
+                                  className={`rounded-full px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                                    isSelected
+                                      ? 'bg-primary text-primary-foreground'
+                                      : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                                  }`}
+                                >
+                                  {SOCIAL_PLATFORM_LABELS[platform]}
+                                </button>
+                              )
+                            })}
+                          </div>
                         </div>
                         <div className="text-right">
                           <p className="text-sm font-medium text-foreground">{formatPostDate(post)}</p>
@@ -805,7 +1033,7 @@ export default function InstagramManager() {
                             {post.status !== 'published' && (
                               <button
                                 type="button"
-                                disabled={!connection?.isConnected || publishingPostId === post.id}
+                                disabled={selectedConnectedTargets.length === 0 || publishingPostId === post.id}
                                 onClick={() => void handlePublishPost(post.id)}
                                 className="inline-flex items-center gap-1 rounded px-3 py-1 text-sm bg-emerald-900/20 hover:bg-emerald-900/40 text-emerald-200 disabled:opacity-60"
                               >
@@ -840,7 +1068,8 @@ export default function InstagramManager() {
                       </div>
                     </CardContent>
                   </Card>
-                ))}
+                  )
+                })}
               </div>
             )}
           </TabsContent>

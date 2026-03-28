@@ -1,4 +1,10 @@
-import { PublishSocialPostResult, SocialConnection, SocialPlatform } from '@/lib/social/types'
+import {
+  PublishSocialPostBatchResult,
+  PublishSocialPostResult,
+  SocialAccessMetrics,
+  SocialConnection,
+  SocialPlatform,
+} from '@/lib/social/types'
 
 async function parseResponse<T>(response: Response): Promise<T> {
   const payload = await response.json().catch(() => null)
@@ -71,4 +77,31 @@ export async function publishPostToSocial(postId: string, platform: SocialPlatfo
 
   const payload = await parseResponse<{ result: PublishSocialPostResult }>(response)
   return payload.result
+}
+
+export async function publishPostToPlatforms(postId: string, platforms: SocialPlatform[]): Promise<PublishSocialPostBatchResult> {
+  const response = await fetch('/api/social/publish/batch', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ postId, platforms }),
+  })
+
+  const payload = await parseResponse<{ result: PublishSocialPostBatchResult }>(response)
+  return payload.result
+}
+
+export async function fetchSocialAccessMetrics(postId?: string): Promise<SocialAccessMetrics[]> {
+  const params = new URLSearchParams()
+  if (postId) {
+    params.set('postId', postId)
+  }
+
+  const response = await fetch(`/api/social/metrics${params.toString() ? `?${params.toString()}` : ''}`, {
+    cache: 'no-store',
+  })
+
+  const payload = await parseResponse<{ metrics: SocialAccessMetrics[] }>(response)
+  return payload.metrics
 }

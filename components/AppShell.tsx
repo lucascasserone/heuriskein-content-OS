@@ -1,6 +1,6 @@
 'use client'
 
-import { ReactNode, useState } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 
 import { usePathname } from 'next/navigation'
 import { Menu, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
@@ -18,6 +18,23 @@ export default function AppShell({ children, userEmail }: AppShellProps) {
   const isAuthRoute = pathname === '/login'
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+
+  useEffect(() => {
+    setIsMobileSidebarOpen(false)
+  }, [pathname])
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) {
+        setIsMobileSidebarOpen(false)
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [])
 
   if (isAuthRoute) {
     return <main className="min-h-screen bg-background">{children}</main>
@@ -61,7 +78,16 @@ export default function AppShell({ children, userEmail }: AppShellProps) {
           </div>
         </header>
 
-        <main className="min-w-0 flex-1 overflow-auto bg-background">{children}</main>
+        <main
+          className="min-w-0 flex-1 overflow-auto bg-background"
+          onClick={() => {
+            if (isMobileSidebarOpen) {
+              setIsMobileSidebarOpen(false)
+            }
+          }}
+        >
+          {children}
+        </main>
       </div>
     </div>
   )

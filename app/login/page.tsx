@@ -47,6 +47,11 @@ function LoginPageContent() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
 
+    if (!isConfigured) {
+      router.replace('/')
+      return
+    }
+
     if (!email.trim() || !password.trim()) {
       setErrorMessage('Email and password are required.')
       return
@@ -117,7 +122,7 @@ function LoginPageContent() {
         <CardContent className="space-y-6">
           {!isConfigured && (
             <div className="rounded-lg border border-amber-500/30 bg-amber-950/40 px-4 py-3 text-sm text-amber-100">
-              Supabase auth is incomplete. Add NEXT_PUBLIC_SUPABASE_ANON_KEY to your local environment.
+              Supabase auth is not configured in this environment. You can still use the dashboard in local mode.
             </div>
           )}
 
@@ -189,8 +194,14 @@ function LoginPageContent() {
               />
             </div>
 
-            <Button type="submit" className="w-full" disabled={!isConfigured || isSubmitting}>
-              {isSubmitting ? 'Submitting...' : mode === 'sign-in' ? 'Sign In' : 'Create Account'}
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {!isConfigured
+                ? 'Enter Dashboard'
+                : isSubmitting
+                  ? 'Submitting...'
+                  : mode === 'sign-in'
+                    ? 'Sign In'
+                    : 'Create Account'}
             </Button>
           </form>
         </CardContent>
