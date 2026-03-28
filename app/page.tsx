@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
 import { BarChart3, Calendar, TrendingUp, Newspaper } from 'lucide-react'
+import Link from 'next/link'
 
 export default function Home() {
   const stats = [
@@ -73,18 +74,18 @@ export default function Home() {
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <button className="with-full rounded-lg border border-border bg-card p-3 text-left text-sm font-medium hover:bg-muted">
+              <Link href="/instagram" className="block w-full rounded-lg border border-border bg-card p-3 text-left text-sm font-medium hover:bg-muted">
                 → Create New Post
-              </button>
-              <button className="with-full rounded-lg border border-border bg-card p-3 text-left text-sm font-medium hover:bg-muted">
+              </Link>
+              <Link href="/analytics" className="block w-full rounded-lg border border-border bg-card p-3 text-left text-sm font-medium hover:bg-muted">
                 → View Analytics
-              </button>
-              <button className="with-full rounded-lg border border-border bg-card p-3 text-left text-sm font-medium hover:bg-muted">
+              </Link>
+              <Link href="/calendar" className="block w-full rounded-lg border border-border bg-card p-3 text-left text-sm font-medium hover:bg-muted">
                 → Schedule Content
-              </button>
-              <button className="with-full rounded-lg border border-border bg-card p-3 text-left text-sm font-medium hover:bg-muted">
+              </Link>
+              <Link href="/competitors" className="block w-full rounded-lg border border-border bg-card p-3 text-left text-sm font-medium hover:bg-muted">
                 → Check Competitors
-              </button>
+              </Link>
             </div>
           </CardContent>
         </Card>

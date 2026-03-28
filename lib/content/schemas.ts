@@ -12,6 +12,9 @@ const optionalDateField = z.union([
 export const createInstagramPostSchema = z.object({
   title: z.string().trim().max(72).optional(),
   caption: z.string().trim().min(1, 'Caption is required'),
+  link: z.union([z.string().trim().url(), z.literal(''), z.null()]).optional().transform((value) => (value === '' ? null : value)),
+  attachments: z.array(z.string().trim().min(1)).max(10).optional(),
+  tags: z.array(z.string().trim().min(1).max(40)).max(20).optional(),
   postType: z.enum(INSTAGRAM_POST_TYPES),
   status: z.enum(INSTAGRAM_POST_STATUSES),
   scheduledFor: optionalDateField,

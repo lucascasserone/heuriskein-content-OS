@@ -6,42 +6,23 @@ import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, R
 import { Calendar } from 'lucide-react'
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
-import { InstagramPost, InstagramPostType } from '@/lib/content/types'
-import { fetchInstagramPosts } from '@/lib/instagram/api'
-
-const typeColors: Record<InstagramPostType, string> = {
-  image: '#60A5FA',
-  video: '#F97316',
-  carousel: '#A78BFA',
-  reel: '#34D399',
-  story: '#FACC15',
-}
-
-function getPostDateLabel(post: InstagramPost): string {
-  const value = post.publishedAt ?? post.scheduledFor ?? post.createdAt
-  return new Date(value).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
-function formatTypeLabel(type: InstagramPostType): string {
-  return type.charAt(0).toUpperCase() + type.slice(1)
-}
+import { fetchAnalyticsSnapshot } from '@/lib/analytics/api'
+import { AnalyticsSnapshot } from '@/lib/analytics/repository'
 
 export default function Analytics() {
-  const [posts, setPosts] = useState<InstagramPost[]>([])
+  const [snapshot, setSnapshot] = useState<AnalyticsSnapshot | null>(null)
+  const [isAutoRefreshEnabled, setIsAutoRefreshEnabled] = useState(true)
   const [isLoading, setIsLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
 
-    async function loadPosts() {
+    async function loadAnalytics() {
       try {
-        const nextPosts = await fetchInstagramPosts()
+        const nextSnapshot = await fetchAnalyticsSnapshot()
         if (active) {
-          setPosts(nextPosts)
+          setSnapshot(nextSnapshot)
           setErrorMessage(null)
         }
       } catch (error) {
@@ -55,47 +36,50 @@ export default function Analytics() {
       }
     }
 
-    loadPosts()
+    loadAnalytics()
 
     return () => {
       active = false
     }
   }, [])
 
-  const datedPosts = [...posts].sort((left, right) => {
-    const leftDate = left.publishedAt ?? left.scheduledFor ?? left.createdAt
-    const rightDate = right.publishedAt ?? right.scheduledFor ?? right.createdAt
-    return leftDate.localeCompare(rightDate)
-  })
+  useEffect(() => {
+    if (!isAutoRefreshEnabled) {
+      return
+    }
 
-  const impressionsData = datedPosts.map((post) => ({
-    date: getPostDateLabel(post),
-    impressions: post.metrics.impressions,
-  }))
+    const intervalId = window.setInterval(() => {
+      void fetchAnalyticsSnapshot()
+        .then((nextSnapshot) => {
+          setSnapshot(nextSnapshot)
+          setErrorMessage(null)
+        })
+        .catch((error) => {
+          setErrorMessage(error instanceof Error ? error.message : 'Failed to refresh analytics data')
+        })
+    }, 60_000)
 
-  const engagementData = datedPosts.map((post) => ({
-    date: getPostDateLabel(post),
-    engagement: post.metrics.engagementRate,
-  }))
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [isAutoRefreshEnabled])
 
-  const contentTypeData = (['image', 'video', 'carousel', 'reel', 'story'] as InstagramPostType[])
-    .map((type) => ({
-      name: formatTypeLabel(type),
-      value: posts.filter((post) => post.postType === type).length,
-      color: typeColors[type],
-    }))
-    .filter((entry) => entry.value > 0)
+  const impressionsData = snapshot?.trends.map((point) => ({
+    date: point.date,
+    impressions: point.impressions,
+  })) ?? []
 
-  const topPostsData = [...posts]
-    .sort((left, right) => right.metrics.likes - left.metrics.likes)
-    .slice(0, 4)
+  const engagementData = snapshot?.trends.map((point) => ({
+    date: point.date,
+    engagement: point.engagement,
+  })) ?? []
 
-  const totalImpressions = posts.reduce((total, post) => total + post.metrics.impressions, 0)
-  const averageEngagement = posts.length > 0
-    ? posts.reduce((total, post) => total + post.metrics.engagementRate, 0) / posts.length
-    : 0
-  const totalReach = posts.reduce((total, post) => total + post.metrics.reach, 0)
-  const scheduledPosts = posts.filter((post) => post.status === 'scheduled').length
+  const contentTypeData = snapshot?.contentTypes ?? []
+  const topPostsData = snapshot?.topPosts ?? []
+  const totalImpressions = snapshot?.summary.totalImpressions ?? 0
+  const averageEngagement = snapshot?.summary.averageEngagement ?? 0
+  const totalReach = snapshot?.summary.totalReach ?? 0
+  const scheduledPosts = snapshot?.summary.scheduledPosts ?? 0
 
   return (
     <div className="space-y-8 p-8">
@@ -105,10 +89,18 @@ export default function Analytics() {
           <p className="mt-2 text-muted-foreground">
             Performance metrics derived directly from the Instagram content data model.
           </p>
+          {snapshot?.generatedAt && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Last backend snapshot: {new Date(snapshot.generatedAt).toLocaleString()}
+            </p>
+          )}
         </div>
-        <button className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-muted">
+        <button
+          onClick={() => setIsAutoRefreshEnabled((current) => !current)}
+          className="flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium hover:bg-muted"
+        >
           <Calendar className="h-4 w-4" />
-          Shared Content Metrics
+          {isAutoRefreshEnabled ? 'Auto refresh: On' : 'Auto refresh: Off'}
         </button>
       </div>
 
@@ -262,13 +254,13 @@ export default function Analytics() {
                 <div key={post.id} className="space-y-2 border-b border-border pb-4 last:border-0 last:pb-0">
                   <div className="flex items-center justify-between gap-4">
                     <span className="font-medium text-sm">{post.title}</span>
-                    <span className="text-sm font-bold text-primary">{post.metrics.likes.toLocaleString()}</span>
+                    <span className="text-sm font-bold text-primary">{post.likes.toLocaleString()}</span>
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full bg-primary"
                       style={{
-                        width: `${topPostsData.length > 0 ? (post.metrics.likes / Math.max(...topPostsData.map((item) => item.metrics.likes || 1))) * 100 : 0}%`,
+                        width: `${topPostsData.length > 0 ? (post.likes / Math.max(...topPostsData.map((item) => item.likes || 1))) * 100 : 0}%`,
                       }}
                     />
                   </div>

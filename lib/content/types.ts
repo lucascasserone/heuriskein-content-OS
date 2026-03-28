@@ -24,6 +24,9 @@ export interface InstagramPost {
   platform: 'instagram'
   title: string
   caption: string
+  link?: string | null
+  attachments?: string[]
+  tags?: string[]
   postType: InstagramPostType
   status: InstagramPostStatus
   scheduledFor: string | null
@@ -39,6 +42,9 @@ export interface InstagramPostRecord {
   platform: ContentPlatform
   title: string
   caption: string
+  external_link?: string | null
+  attachments?: string[] | null
+  tags?: string[] | null
   post_type: InstagramPostType
   status: InstagramPostStatus
   scheduled_for: string | null
@@ -56,6 +62,9 @@ export interface InstagramPostRecord {
 export interface CreateInstagramPostInput {
   title?: string
   caption: string
+  link?: string | null
+  attachments?: string[]
+  tags?: string[]
   postType: InstagramPostType
   status: InstagramPostStatus
   scheduledFor?: string | null
@@ -65,6 +74,9 @@ export interface CreateInstagramPostInput {
 export interface UpdateInstagramPostInput {
   title?: string
   caption?: string
+  link?: string | null
+  attachments?: string[]
+  tags?: string[]
   postType?: InstagramPostType
   status?: InstagramPostStatus
   scheduledFor?: string | null

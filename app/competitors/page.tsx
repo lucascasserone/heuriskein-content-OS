@@ -363,7 +363,7 @@ export default function CompetitorTracker() {
   ]
 
   return (
-    <div className="space-y-8 p-8">
+    <div className="space-y-8 p-6 lg:p-8">
       <div className="flex items-start justify-between">
         <div>
           <h1 className="section-title">Competitor Tracker</h1>
@@ -391,13 +391,14 @@ export default function CompetitorTracker() {
         </Card>
       )}
 
-      <Card>
+      <div className="grid gap-6 xl:grid-cols-[360px_1fr]">
+      <Card className="h-fit xl:sticky xl:top-6">
         <CardHeader>
           <CardTitle>{editingCompetitorId ? 'Edit Competitor' : 'Add Competitor'}</CardTitle>
           <CardDescription>Create or update a competitor profile and metrics.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+          <form onSubmit={handleSubmit} className="grid gap-3">
             <input
               className="h-10 rounded-md border border-border bg-background px-3 text-sm"
               placeholder="Competitor name"
@@ -492,13 +493,13 @@ export default function CompetitorTracker() {
               onChange={(event) => setFormState((prev) => ({ ...prev, topPostEngage: event.target.value }))}
             />
             <input
-              className="h-10 rounded-md border border-border bg-background px-3 text-sm md:col-span-2"
+              className="h-10 rounded-md border border-border bg-background px-3 text-sm"
               placeholder="Top post caption"
               value={formState.topPostCaption}
               onChange={(event) => setFormState((prev) => ({ ...prev, topPostCaption: event.target.value }))}
               required
             />
-            <div className="md:col-span-2 flex gap-2">
+            <div className="flex gap-2 pt-2">
               <Button type="submit" disabled={isSaving}>
                 {isSaving ? 'Saving...' : editingCompetitorId ? 'Update Competitor' : 'Create Competitor'}
               </Button>
@@ -509,6 +510,8 @@ export default function CompetitorTracker() {
           </form>
         </CardContent>
       </Card>
+
+      <div className="space-y-6">
 
       {industryBenchmarks && (
         <div className="grid gap-4 md:grid-cols-4">
@@ -525,7 +528,7 @@ export default function CompetitorTracker() {
         </div>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <button
           onClick={() => setSortBy('followers')}
           className={`px-4 py-2 rounded text-sm font-medium transition-colors ${
@@ -623,7 +626,7 @@ export default function CompetitorTracker() {
             </div>
           )}
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {sortedCompetitors.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">No competitors loaded yet.</p>
             ) : (
@@ -636,7 +639,7 @@ export default function CompetitorTracker() {
                       : 'border-border hover:border-primary/50'
                   }`}
                 >
-                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
+                  <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                     <div>
                       <p className="font-semibold text-foreground">{competitor.name}</p>
                       <p className="text-xs text-muted-foreground">{competitor.handle}</p>
@@ -677,7 +680,7 @@ export default function CompetitorTracker() {
                       </p>
                     </div>
 
-                    <div className="flex items-end justify-end gap-2">
+                    <div className="flex items-end justify-end gap-2 lg:col-span-1">
                       <Button size="sm" variant="outline" onClick={() => { void handleSelectCompetitor(competitor.id) }}>
                         History
                       </Button>
@@ -734,6 +737,8 @@ export default function CompetitorTracker() {
           )}
         </CardContent>
       </Card>
+      </div>
+      </div>
     </div>
   )
 }

@@ -1,0 +1,4 @@
+caption,postType,status,scheduledFor,link,attachments,tags
+"Launch announcement for the new dashboard module","image","scheduled","2026-03-30","https://example.com/blog/launch","https://images.example.com/launch-cover.jpg","launch,product,instagram"
+"Behind the scenes of content planning workflow","carousel","draft","","","https://images.example.com/bts-1.jpg,https://images.example.com/bts-2.jpg","workflow,team,content"
+"Weekly creator tip: improve hook in first 2 seconds","reel","backlog","","https://example.com/creator-tip","https://videos.example.com/reel-hook.mp4","tips,reels,engagement"

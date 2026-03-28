@@ -72,6 +72,15 @@ create table if not exists public.competitor_metrics_history (
 alter table public.content_posts
   add column if not exists user_id uuid references auth.users (id) on delete cascade;
 
+alter table public.content_posts
+  add column if not exists external_link text;
+
+alter table public.content_posts
+  add column if not exists attachments text[] not null default '{}';
+
+alter table public.content_posts
+  add column if not exists tags text[] not null default '{}';
+
 create index if not exists content_posts_user_id_idx on public.content_posts (user_id);
 create index if not exists content_posts_platform_idx on public.content_posts (platform);
 create index if not exists content_posts_status_idx on public.content_posts (status);
