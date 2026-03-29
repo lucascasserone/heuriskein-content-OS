@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { isSupabaseConfigured } from '@/lib/supabase/config'
 
-type AuthMode = 'sign-in' | 'sign-up'
+type AuthMode = 'sign-in' | 'sign-up' | 'forgot-password'
 
 export default function LoginPage() {
   return (
@@ -51,7 +51,7 @@ function LoginPageContent() {
       return
     }
 
-    if (!email.trim() || !password.trim()) {
+    if (!email.trim() || (mode !== 'forgot-password' && !password.trim())) {
       setErrorMessage('Email and password are required.')
       return
     }
@@ -78,6 +78,19 @@ function LoginPageContent() {
         }
 
         window.location.assign(nextPath)
+        return
+      }
+
+      if (mode === 'forgot-password') {
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: `${window.location.origin}/auth/callback?next=/auth/reset-password`,
+        })
+
+        if (error) {
+          throw error
+        }
+
+        setSuccessMessage('Password reset email sent. Check your inbox and click the link to set a new password.')
         return
       }
 
@@ -143,34 +156,51 @@ function LoginPageContent() {
             If email confirmation is enabled in Supabase Auth, a new account cannot sign in until the confirmation link is opened.
           </div>
 
-          <div className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-background p-1">
-            <button
-              type="button"
-              onClick={() => {
-                setMode('sign-in')
-                setErrorMessage(null)
-                setSuccessMessage(null)
-              }}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                mode === 'sign-in' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setMode('sign-up')
-                setErrorMessage(null)
-                setSuccessMessage(null)
-              }}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                mode === 'sign-up' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Create Account
-            </button>
-          </div>
+          {mode === 'forgot-password' ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('sign-in')
+                  setErrorMessage(null)
+                  setSuccessMessage(null)
+                }}
+                className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                ← Back to Sign In
+              </button>
+              <span className="ml-auto text-sm font-medium text-foreground">Recover Password</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-2 rounded-xl border border-border bg-background p-1">
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('sign-in')
+                  setErrorMessage(null)
+                  setSuccessMessage(null)
+                }}
+                className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  mode === 'sign-in' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('sign-up')
+                  setErrorMessage(null)
+                  setSuccessMessage(null)
+                }}
+                className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  mode === 'sign-up' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Create Account
+              </button>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
@@ -184,16 +214,33 @@ function LoginPageContent() {
               />
             </div>
 
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Minimum 6 characters"
-                className="w-full rounded-lg border border-border bg-background px-4 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
+            {mode !== 'forgot-password' && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-foreground">Password</label>
+                  {mode === 'sign-in' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode('forgot-password')
+                        setErrorMessage(null)
+                        setSuccessMessage(null)
+                      }}
+                      className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Minimum 6 characters"
+                  className="w-full rounded-lg border border-border bg-background px-4 py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            )}
 
             <Button type="submit" className="w-full" disabled={isSubmitting}>
               {!isConfigured
@@ -202,7 +249,9 @@ function LoginPageContent() {
                   ? 'Submitting...'
                   : mode === 'sign-in'
                     ? 'Sign In'
-                    : 'Create Account'}
+                    : mode === 'forgot-password'
+                      ? 'Send Reset Email'
+                      : 'Create Account'}
             </Button>
           </form>
         </CardContent>
