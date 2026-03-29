@@ -29,6 +29,7 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 build-output.log
+build-output.txt
 
 # Local git diagnostic artifacts
 .git-*.json
