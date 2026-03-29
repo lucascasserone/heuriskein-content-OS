@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import * as XLSX from 'xlsx'
 
@@ -14,7 +15,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/Dialog'
-import { Plus, Calendar, FileText, CheckCircle, Archive, Upload, Eye, Download, Send, Link2, Unplug } from 'lucide-react'
+import { Plus, Calendar, FileText, CheckCircle, Archive, Upload, Eye, Download, Send, Link2 } from 'lucide-react'
 import { InstagramPost, InstagramPostStatus, InstagramPostType } from '@/lib/content/types'
 import {
   createInstagramPostRequest,
@@ -23,8 +24,6 @@ import {
   updateInstagramPostRequest,
 } from '@/lib/instagram/api'
 import {
-  connectInstagramAccount,
-  disconnectSocialPlatform,
   fetchSocialAccessMetrics,
   fetchSocialConnections,
   publishPostToPlatforms,
@@ -126,9 +125,6 @@ export default function InstagramManager() {
   const [connections, setConnections] = useState<SocialConnection[]>([])
   const [socialMetrics, setSocialMetrics] = useState<SocialAccessMetrics[]>([])
   const [postTargets, setPostTargets] = useState<Record<string, SocialPlatform[]>>({})
-  const [connectionUserId, setConnectionUserId] = useState('')
-  const [connectionToken, setConnectionToken] = useState('')
-  const [isConnecting, setIsConnecting] = useState(false)
   const [publishingPostId, setPublishingPostId] = useState<string | null>(null)
 
   const postTypes: InstagramPostType[] = ['image', 'video', 'carousel', 'reel', 'story']
@@ -160,8 +156,6 @@ export default function InstagramManager() {
   const connectedPlatforms = connections
     .filter((item) => item.isConnected)
     .map((item) => item.platform)
-
-  const instagramConnection = connections.find((item) => item.platform === 'instagram') ?? null
 
   const defaultTargets: SocialPlatform[] = connectedPlatforms.length > 0 ? connectedPlatforms : ['instagram']
 
@@ -390,66 +384,6 @@ export default function InstagramManager() {
     }
   }
 
-  const handleConnectInstagram = async (event: React.FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-
-    if (!connectionUserId.trim() || !connectionToken.trim()) {
-      setErrorMessage('Instagram User ID and access token are required.')
-      return
-    }
-
-    try {
-      setIsConnecting(true)
-      const nextConnection = await connectInstagramAccount({
-        instagramUserId: connectionUserId.trim(),
-        accessToken: connectionToken.trim(),
-      })
-
-      setConnections((current) => {
-        const otherPlatforms = current.filter((item) => item.platform !== 'instagram')
-        return [...otherPlatforms, nextConnection]
-      })
-      const nextMetrics = await fetchSocialAccessMetrics()
-      setSocialMetrics(nextMetrics)
-      setConnectionToken('')
-      setErrorMessage(null)
-      setSuccessMessage('Instagram connection configured successfully.')
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to connect Instagram account')
-    } finally {
-      setIsConnecting(false)
-    }
-  }
-
-  const handleDisconnectInstagram = async () => {
-    try {
-      setIsConnecting(true)
-      await disconnectSocialPlatform('instagram')
-      setConnections((current) =>
-        current.map((item) =>
-          item.platform === 'instagram'
-            ? {
-                ...item,
-                isConnected: false,
-                accountId: null,
-                instagramUserId: null,
-                connectedAt: null,
-                mode: 'mock',
-              }
-            : item
-        )
-      )
-      const nextMetrics = await fetchSocialAccessMetrics()
-      setSocialMetrics(nextMetrics)
-      setErrorMessage(null)
-      setSuccessMessage('Instagram connection disconnected.')
-    } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to disconnect Instagram account')
-    } finally {
-      setIsConnecting(false)
-    }
-  }
-
   const handlePublishPost = async (postId: string) => {
     try {
       const requestedPlatforms = postTargets[postId] ?? defaultTargets
@@ -533,9 +467,9 @@ export default function InstagramManager() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="section-title">Instagram Manager</h1>
+          <h1 className="section-title">Content Planning Studio</h1>
           <p className="mt-2 text-muted-foreground">
-            Manage your Instagram content, schedules, and drafts
+            Plan, organize, and publish campaign content across connected social channels.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -558,7 +492,7 @@ export default function InstagramManager() {
             />
           </label>
 
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
           <DialogTrigger asChild>
             <Button onClick={openCreateDialog} className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
               <Plus className="h-4 w-4" />
@@ -771,12 +705,12 @@ export default function InstagramManager() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Link2 className="h-4 w-4" />
-            Social Connection and Direct Publishing
+            Channel Delivery Status
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap items-center gap-3 text-sm">
-            <span className="text-muted-foreground">Status:</span>
+            <span className="text-muted-foreground">Linked channels:</span>
             <span
               className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold ${
                 connectedPlatforms.length > 0
@@ -784,14 +718,8 @@ export default function InstagramManager() {
                   : 'bg-yellow-900/30 text-yellow-200'
               }`}
             >
-              {connectedPlatforms.length > 0 ? `${connectedPlatforms.length} connected` : 'Not connected'}
+              {connectedPlatforms.length > 0 ? `${connectedPlatforms.length} ready` : 'No channel linked'}
             </span>
-            {instagramConnection?.instagramUserId && (
-              <span className="text-xs text-muted-foreground">Instagram User ID: {instagramConnection.instagramUserId}</span>
-            )}
-            {instagramConnection?.mode && (
-              <span className="text-xs text-muted-foreground">Instagram publish mode: {instagramConnection.mode}</span>
-            )}
           </div>
 
           {connectedPlatforms.length > 0 && (
@@ -807,39 +735,17 @@ export default function InstagramManager() {
             </div>
           )}
 
-          <form onSubmit={handleConnectInstagram} className="grid gap-3 md:grid-cols-3">
-            <input
-              value={connectionUserId}
-              onChange={(event) => setConnectionUserId(event.target.value)}
-              placeholder="Instagram User ID"
-              className="w-full rounded-lg border border-border bg-card px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-            <input
-              type="password"
-              value={connectionToken}
-              onChange={(event) => setConnectionToken(event.target.value)}
-              placeholder="Access Token"
-              className="w-full rounded-lg border border-border bg-card px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-            <div className="flex gap-2">
-              <Button type="submit" disabled={isConnecting} className="flex-1">
-                {isConnecting ? 'Linking...' : 'Link Instagram API'}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={isConnecting || !instagramConnection?.isConnected}
-                onClick={() => void handleDisconnectInstagram()}
-                className="gap-1"
-              >
-                <Unplug className="h-3.5 w-3.5" />
-                Unlink Instagram API
-              </Button>
-            </div>
-          </form>
-          <p className="text-xs text-muted-foreground">
-            To publish directly via Instagram Graph API, set SOCIAL_PUBLISH_MODE=api and configure a valid Instagram User ID + Access Token.
-          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <Link
+              href="/social"
+              className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            >
+              Manage API Keys in Social Hub
+            </Link>
+            <p className="text-xs text-muted-foreground">
+              API key onboarding is centralized in Social Hub for all platforms.
+            </p>
+          </div>
         </CardContent>
       </Card>
 

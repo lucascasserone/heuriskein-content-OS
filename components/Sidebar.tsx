@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import {
   LayoutGrid,
   BarChart3,
@@ -33,7 +32,7 @@ const navigation = [
     icon: LayoutGrid,
   },
   {
-    name: 'Instagram Manager',
+    name: 'Content Planning Studio',
     href: '/instagram',
     icon: LayoutGrid,
   },
@@ -66,7 +65,6 @@ const navigation = [
 
 export default function Sidebar({ userEmail, isCollapsed, isMobileOpen, onCloseMobile }: SidebarProps) {
   const pathname = usePathname()
-  const router = useRouter()
   const [isSigningOut, setIsSigningOut] = useState(false)
 
   function handleNavigationClick() {
@@ -87,16 +85,14 @@ export default function Sidebar({ userEmail, isCollapsed, isMobileOpen, onCloseM
           throw error
         }
 
-        router.replace('/login')
-        router.refresh()
+        window.location.assign('/login')
         return
       }
 
-      router.replace('/')
-      router.refresh()
+      window.location.assign('/')
     } catch {
       // Fallback ensures user can still leave the private area even if auth client fails.
-      router.push(isSupabaseConfigured() ? '/login' : '/')
+      window.location.assign(isSupabaseConfigured() ? '/login' : '/')
     } finally {
       setIsSigningOut(false)
     }
@@ -143,7 +139,7 @@ export default function Sidebar({ userEmail, isCollapsed, isMobileOpen, onCloseM
             const Icon = item.icon
             const isActive = pathname === item.href
             return (
-              <Link
+              <a
                 key={item.href}
                 href={item.href}
                 onClick={handleNavigationClick}
@@ -157,7 +153,7 @@ export default function Sidebar({ userEmail, isCollapsed, isMobileOpen, onCloseM
               >
                 <Icon className="h-5 w-5" />
                 <span className={cn(isCollapsed && 'lg:hidden')}>{item.name}</span>
-              </Link>
+              </a>
             )
           })}
         </div>

@@ -3,7 +3,7 @@
 import { Suspense, useState } from 'react'
 import type { FormEvent } from 'react'
 
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 
 import { Button } from '@/components/ui/Button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/Card'
@@ -21,7 +21,6 @@ export default function LoginPage() {
 }
 
 function LoginPageContent() {
-  const router = useRouter()
   const searchParams = useSearchParams()
 
   const [mode, setMode] = useState<AuthMode>('sign-in')
@@ -48,7 +47,7 @@ function LoginPageContent() {
     event.preventDefault()
 
     if (!isConfigured) {
-      router.replace('/')
+      window.location.assign('/')
       return
     }
 
@@ -65,7 +64,7 @@ function LoginPageContent() {
       const supabase = createSupabaseBrowserClient()
 
       if (mode === 'sign-in') {
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email: email.trim(),
           password,
         })
@@ -74,8 +73,11 @@ function LoginPageContent() {
           throw error
         }
 
-        router.replace(nextPath)
-        router.refresh()
+        if (!data.session) {
+          throw new Error('Sign-in succeeded but no active session was returned.')
+        }
+
+        window.location.assign(nextPath)
         return
       }
 
@@ -92,8 +94,7 @@ function LoginPageContent() {
       }
 
       if (data.session) {
-        router.replace(nextPath)
-        router.refresh()
+        window.location.assign(nextPath)
         return
       }
 
