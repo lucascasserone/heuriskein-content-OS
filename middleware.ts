@@ -4,63 +4,69 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseAnonKey, getSupabaseUrl, isSupabaseConfigured } from '@/lib/supabase/config'
 
 export async function middleware(request: NextRequest) {
-  if (!isSupabaseConfigured()) {
-    return NextResponse.next({ request })
-  }
-
-  const supabaseUrl = getSupabaseUrl()
-  const anonKey = getSupabaseAnonKey()
-
-  if (!supabaseUrl || !anonKey) {
-    return NextResponse.next({ request })
-  }
-
-  let response = NextResponse.next({ request })
-
-  const supabase = createServerClient(supabaseUrl, anonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll()
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) => {
-          request.cookies.set(name, value)
-        })
-
-        response = NextResponse.next({ request })
-
-        cookiesToSet.forEach(({ name, value, options }) => {
-          response.cookies.set(name, value, options)
-        })
-      },
-    },
-  })
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  const { pathname, search } = request.nextUrl
-  const isLoginRoute = pathname === '/login'
-  const isForcedLogoutLogin = isLoginRoute && request.nextUrl.searchParams.get('logout') === '1'
-
-  if (!user && !isLoginRoute) {
-    const redirectUrl = request.nextUrl.clone()
-    redirectUrl.pathname = '/login'
-
-    if (pathname !== '/') {
-      redirectUrl.searchParams.set('next', `${pathname}${search}`)
+  try {
+    if (!isSupabaseConfigured()) {
+      return NextResponse.next({ request })
     }
 
-    return NextResponse.redirect(redirectUrl)
-  }
+    const supabaseUrl = getSupabaseUrl()
+    const anonKey = getSupabaseAnonKey()
 
-  if (user && isLoginRoute && !isForcedLogoutLogin) {
-    const nextPath = request.nextUrl.searchParams.get('next') || '/'
-    return NextResponse.redirect(new URL(nextPath, request.url))
-  }
+    if (!supabaseUrl || !anonKey) {
+      return NextResponse.next({ request })
+    }
 
-  return response
+    let response = NextResponse.next({ request })
+
+    const supabase = createServerClient(supabaseUrl, anonKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => {
+            request.cookies.set(name, value)
+          })
+
+          response = NextResponse.next({ request })
+
+          cookiesToSet.forEach(({ name, value, options }) => {
+            response.cookies.set(name, value, options)
+          })
+        },
+      },
+    })
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    const { pathname, search } = request.nextUrl
+    const isLoginRoute = pathname === '/login'
+    const isForcedLogoutLogin = isLoginRoute && request.nextUrl.searchParams.get('logout') === '1'
+
+    if (!user && !isLoginRoute) {
+      const redirectUrl = request.nextUrl.clone()
+      redirectUrl.pathname = '/login'
+
+      if (pathname !== '/') {
+        redirectUrl.searchParams.set('next', `${pathname}${search}`)
+      }
+
+      return NextResponse.redirect(redirectUrl)
+    }
+
+    if (user && isLoginRoute && !isForcedLogoutLogin) {
+      const nextPath = request.nextUrl.searchParams.get('next') || '/'
+      return NextResponse.redirect(new URL(nextPath, request.url))
+    }
+
+    return response
+  } catch (error) {
+    console.error('[middleware] error:', error)
+    // On unexpected error, allow the request to continue and let the page handle auth
+    return NextResponse.next({ request })
+  }
 }
 
 export const config = {
