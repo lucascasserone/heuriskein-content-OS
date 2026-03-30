@@ -32,6 +32,7 @@ function LoginPageContent() {
 
   const nextPath = searchParams.get('next') || '/'
   const isConfigured = isSupabaseConfigured()
+  const isLocalBypassEnabled = !isConfigured && process.env.NODE_ENV === 'development'
 
   function buildAuthErrorMessage(error: unknown): string {
     const message = error instanceof Error ? error.message : 'Authentication failed.'
@@ -47,7 +48,12 @@ function LoginPageContent() {
     event.preventDefault()
 
     if (!isConfigured) {
-      window.location.assign('/')
+      if (isLocalBypassEnabled) {
+        window.location.assign('/')
+        return
+      }
+
+      setErrorMessage('Authentication is unavailable in this environment. Configure Supabase variables in Vercel to sign in.')
       return
     }
 
@@ -136,7 +142,9 @@ function LoginPageContent() {
         <CardContent className="space-y-6">
           {!isConfigured && (
             <div className="rounded-lg border border-amber-500/30 bg-amber-950/40 px-4 py-3 text-sm text-amber-100">
-              Supabase auth is not configured in this environment. You can still use the dashboard in local mode.
+              {isLocalBypassEnabled
+                ? 'Supabase auth is not configured in this environment. Local development bypass is enabled.'
+                : 'Supabase auth is not configured in this environment. Sign-in is disabled until environment variables are configured.'}
             </div>
           )}
 
@@ -242,9 +250,15 @@ function LoginPageContent() {
               </div>
             )}
 
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isSubmitting || (!isConfigured && !isLocalBypassEnabled)}
+            >
               {!isConfigured
-                ? 'Enter Dashboard'
+                ? isLocalBypassEnabled
+                  ? 'Enter Dashboard'
+                  : 'Sign In Unavailable'
                 : isSubmitting
                   ? 'Submitting...'
                   : mode === 'sign-in'
