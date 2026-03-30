@@ -42,6 +42,7 @@ export async function middleware(request: NextRequest) {
 
   const { pathname, search } = request.nextUrl
   const isLoginRoute = pathname === '/login'
+  const isForcedLogoutLogin = isLoginRoute && request.nextUrl.searchParams.get('logout') === '1'
 
   if (!user && !isLoginRoute) {
     const redirectUrl = request.nextUrl.clone()
@@ -54,7 +55,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(redirectUrl)
   }
 
-  if (user && isLoginRoute) {
+  if (user && isLoginRoute && !isForcedLogoutLogin) {
     const nextPath = request.nextUrl.searchParams.get('next') || '/'
     return NextResponse.redirect(new URL(nextPath, request.url))
   }
