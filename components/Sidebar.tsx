@@ -15,8 +15,6 @@ import {
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
-import { isSupabaseConfigured } from '@/lib/supabase/config'
 
 type SidebarProps = {
   userEmail: string | null
@@ -77,23 +75,12 @@ export default function Sidebar({ userEmail, isCollapsed, isMobileOpen, onCloseM
     try {
       setIsSigningOut(true)
 
-      if (isSupabaseConfigured()) {
-        // Best-effort client sign-out, then force login screen with logout marker.
-        try {
-          const supabase = createSupabaseBrowserClient()
-          await supabase.auth.signOut()
-        } catch {
-          // Continue with redirect even if sign-out request fails.
-        }
-
-        window.location.assign('/login?logout=1')
-        return
-      }
-
-      window.location.assign('/')
+      // Always delegate sign-out to the server route so cookie cleanup is
+      // consistent across local, Vercel preview, and production domains.
+      window.location.assign(`/auth/logout?t=${Date.now()}`)
     } catch {
       // Fallback ensures user can still leave the private area even if auth client fails.
-      window.location.assign(isSupabaseConfigured() ? '/login' : '/')
+      window.location.assign('/login?logout=1')
     } finally {
       setIsSigningOut(false)
     }
