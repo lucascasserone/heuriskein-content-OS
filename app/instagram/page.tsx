@@ -72,6 +72,24 @@ function parseCsvValues(raw: string): string[] {
     .filter((item) => item.length > 0)
 }
 
+function getRowValue(row: Record<string, unknown>, keys: string[]): unknown {
+  const normalizedLookup = new Map<string, unknown>()
+
+  for (const [key, value] of Object.entries(row)) {
+    const normalizedKey = key.replace(/^\uFEFF/, '').trim().toLowerCase()
+    normalizedLookup.set(normalizedKey, value)
+  }
+
+  for (const key of keys) {
+    const normalized = key.replace(/^\uFEFF/, '').trim().toLowerCase()
+    if (normalizedLookup.has(normalized)) {
+      return normalizedLookup.get(normalized)
+    }
+  }
+
+  return undefined
+}
+
 function normalizeRowStatus(value: unknown): InstagramPostStatus {
   const raw = String(value ?? '').trim().toLowerCase()
   if (raw === 'scheduled' || raw === 'draft' || raw === 'published' || raw === 'backlog') {
@@ -398,35 +416,40 @@ export default function InstagramManager() {
 
       let importedCount = 0
       let skippedCount = 0
+      let firstImportError: string | null = null
       for (const row of rows) {
-        const caption = String(row.caption ?? row.Caption ?? '').trim()
+        const caption = String(getRowValue(row, ['caption']) ?? '').trim()
         if (!caption) {
           skippedCount += 1
           continue
         }
 
-        const scheduledFor = normalizeRowDate(row.scheduledFor ?? row.date ?? row.Date)
+        const scheduledFor = normalizeRowDate(getRowValue(row, ['scheduledFor', 'date']))
         const payload = {
           caption,
-          postType: normalizeRowType(row.postType ?? row.type ?? row.Type),
-          status: normalizeRowStatus(row.status ?? row.Status),
+          postType: normalizeRowType(getRowValue(row, ['postType', 'type'])),
+          status: normalizeRowStatus(getRowValue(row, ['status'])),
           scheduledFor,
-          link: String(row.link ?? row.Link ?? '').trim() || null,
-          attachments: parseCsvValues(String(row.attachments ?? row.Attachments ?? '')),
-          tags: parseCsvValues(String(row.tags ?? row.Tags ?? '')),
+          link: String(getRowValue(row, ['link']) ?? '').trim() || null,
+          attachments: parseCsvValues(String(getRowValue(row, ['attachments']) ?? '')),
+          tags: parseCsvValues(String(getRowValue(row, ['tags']) ?? '')),
         }
 
         try {
           const created = await createInstagramPostRequest(payload)
           setPosts((current) => [created, ...current])
           importedCount += 1
-        } catch {
+        } catch (error) {
           skippedCount += 1
+
+          if (!firstImportError) {
+            firstImportError = error instanceof Error ? error.message : 'Invalid import row'
+          }
         }
       }
 
       if (importedCount === 0) {
-        setErrorMessage('No valid rows found to import.')
+        setErrorMessage(firstImportError ? `No valid rows found to import. First error: ${firstImportError}` : 'No valid rows found to import.')
         setSuccessMessage(null)
         return
       }
