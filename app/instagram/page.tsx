@@ -68,8 +68,28 @@ const SOCIAL_PLATFORM_LABELS: Record<SocialPlatform, string> = {
 function parseCsvValues(raw: string): string[] {
   return raw
     .split(',')
-    .map((item) => item.trim())
+    .map((item) => normalizeImportedText(item))
     .filter((item) => item.length > 0)
+}
+
+function repairMojibake(value: string): string {
+  // Common case: UTF-8 text decoded as Latin-1 (e.g. "vocÃª").
+  if (!/[ÃÂ]/.test(value)) {
+    return value
+  }
+
+  try {
+    const bytes = Uint8Array.from(value, (char) => char.charCodeAt(0) & 0xff)
+    const repaired = new TextDecoder('utf-8').decode(bytes)
+    return repaired.includes('\uFFFD') ? value : repaired
+  } catch {
+    return value
+  }
+}
+
+function normalizeImportedText(value: unknown): string {
+  const raw = String(value ?? '').trim()
+  return repairMojibake(raw)
 }
 
 function getRowValue(row: Record<string, unknown>, keys: string[]): unknown {
@@ -416,9 +436,10 @@ export default function InstagramManager() {
 
       let importedCount = 0
       let skippedCount = 0
+      let importedWithoutOptionalFieldsCount = 0
       let firstImportError: string | null = null
       for (const row of rows) {
-        const caption = String(getRowValue(row, ['caption']) ?? '').trim()
+        const caption = normalizeImportedText(getRowValue(row, ['caption']))
         if (!caption) {
           skippedCount += 1
           continue
@@ -430,9 +451,9 @@ export default function InstagramManager() {
           postType: normalizeRowType(getRowValue(row, ['postType', 'type'])),
           status: normalizeRowStatus(getRowValue(row, ['status'])),
           scheduledFor,
-          link: String(getRowValue(row, ['link']) ?? '').trim() || null,
-          attachments: parseCsvValues(String(getRowValue(row, ['attachments']) ?? '')),
-          tags: parseCsvValues(String(getRowValue(row, ['tags']) ?? '')),
+          link: normalizeImportedText(getRowValue(row, ['link'])) || null,
+          attachments: parseCsvValues(normalizeImportedText(getRowValue(row, ['attachments']))),
+          tags: parseCsvValues(normalizeImportedText(getRowValue(row, ['tags']))),
         }
 
         try {
@@ -461,6 +482,7 @@ export default function InstagramManager() {
               const created = await createInstagramPostRequest(corePayload)
               setPosts((current) => [created, ...current])
               importedCount += 1
+              importedWithoutOptionalFieldsCount += 1
             } catch (retryError) {
               skippedCount += 1
               if (!firstImportError) {
@@ -484,9 +506,21 @@ export default function InstagramManager() {
 
       setErrorMessage(null)
       setSuccessMessage(
-        skippedCount > 0
-          ? `${importedCount} post(s) imported successfully. ${skippedCount} row(s) were skipped due to invalid data.`
-          : `${importedCount} post(s) imported successfully.`
+        (() => {
+          const successParts = [`${importedCount} post(s) imported successfully.`]
+
+          if (skippedCount > 0) {
+            successParts.push(`${skippedCount} row(s) were skipped due to invalid data.`)
+          }
+
+          if (importedWithoutOptionalFieldsCount > 0) {
+            successParts.push(
+              `${importedWithoutOptionalFieldsCount} row(s) were saved without Link/Attachments/Tags because your database schema is missing optional columns.`
+            )
+          }
+
+          return successParts.join(' ')
+        })()
       )
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to import posts')
