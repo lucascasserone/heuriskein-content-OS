@@ -15,7 +15,6 @@ import {
 } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
-import { createSupabaseBrowserClient } from '@/lib/supabase/client'
 import { isSupabaseConfigured } from '@/lib/supabase/config'
 
 type SidebarProps = {
@@ -78,14 +77,8 @@ export default function Sidebar({ userEmail, isCollapsed, isMobileOpen, onCloseM
       setIsSigningOut(true)
 
       if (isSupabaseConfigured()) {
-        const supabase = createSupabaseBrowserClient()
-        const { error } = await supabase.auth.signOut()
-
-        if (error) {
-          throw error
-        }
-
-        window.location.assign('/login')
+        // Use a server route to guarantee auth cookies are cleared in production.
+        window.location.assign('/auth/logout')
         return
       }
 

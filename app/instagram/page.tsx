@@ -90,6 +90,50 @@ function normalizeRowType(value: unknown): InstagramPostType {
   return 'image'
 }
 
+function normalizeRowDate(value: unknown): string | null {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const parsed = XLSX.SSF.parse_date_code(value)
+    if (!parsed) {
+      return null
+    }
+
+    const asUtcDate = new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d, parsed.H ?? 0, parsed.M ?? 0, Math.floor(parsed.S ?? 0)))
+    return asUtcDate.toISOString()
+  }
+
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString()
+  }
+
+  const raw = String(value).trim()
+  if (!raw) {
+    return null
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/.test(raw)) {
+    const withIsoSeparator = raw.replace(' ', 'T')
+    const parsed = new Date(withIsoSeparator)
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
+  }
+
+  const ddmmyyyy = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/)
+  if (ddmmyyyy) {
+    const [, day, month, year] = ddmmyyyy
+    return `${year}-${month}-${day}`
+  }
+
+  const parsed = new Date(raw)
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
+}
+
 function toDateInputValue(value: string | null): string {
   return value ? value.slice(0, 10) : ''
 }
@@ -353,29 +397,46 @@ export default function InstagramManager() {
       const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { defval: '' })
 
       let importedCount = 0
+      let skippedCount = 0
       for (const row of rows) {
         const caption = String(row.caption ?? row.Caption ?? '').trim()
         if (!caption) {
+          skippedCount += 1
           continue
         }
 
+        const scheduledFor = normalizeRowDate(row.scheduledFor ?? row.date ?? row.Date)
         const payload = {
           caption,
           postType: normalizeRowType(row.postType ?? row.type ?? row.Type),
           status: normalizeRowStatus(row.status ?? row.Status),
-          scheduledFor: String(row.scheduledFor ?? row.date ?? row.Date ?? '').trim() || null,
+          scheduledFor,
           link: String(row.link ?? row.Link ?? '').trim() || null,
           attachments: parseCsvValues(String(row.attachments ?? row.Attachments ?? '')),
           tags: parseCsvValues(String(row.tags ?? row.Tags ?? '')),
         }
 
-        const created = await createInstagramPostRequest(payload)
-        setPosts((current) => [created, ...current])
-        importedCount += 1
+        try {
+          const created = await createInstagramPostRequest(payload)
+          setPosts((current) => [created, ...current])
+          importedCount += 1
+        } catch {
+          skippedCount += 1
+        }
       }
 
-      setErrorMessage(importedCount > 0 ? null : 'No valid rows found to import.')
-      setSuccessMessage(importedCount > 0 ? `${importedCount} post(s) imported successfully.` : null)
+      if (importedCount === 0) {
+        setErrorMessage('No valid rows found to import.')
+        setSuccessMessage(null)
+        return
+      }
+
+      setErrorMessage(null)
+      setSuccessMessage(
+        skippedCount > 0
+          ? `${importedCount} post(s) imported successfully. ${skippedCount} row(s) were skipped due to invalid data.`
+          : `${importedCount} post(s) imported successfully.`
+      )
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Failed to import posts')
     } finally {

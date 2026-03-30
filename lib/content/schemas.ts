@@ -2,12 +2,37 @@ import { z } from 'zod'
 
 import { CONTENT_PLATFORMS, INSTAGRAM_POST_STATUSES, INSTAGRAM_POST_TYPES } from '@/lib/content/types'
 
-const optionalDateField = z.union([
-  z.string().datetime(),
-  z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  z.literal(''),
-  z.null(),
-]).transform((value) => (value === '' ? null : value)).optional()
+function normalizeOptionalDateValue(value: unknown): string | null {
+  if (value === null || value === undefined || value === '') {
+    return null
+  }
+
+  const raw = String(value).trim()
+  if (!raw) {
+    return null
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    return raw
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?$/.test(raw)) {
+    const parsed = new Date(raw.replace(' ', 'T'))
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
+  }
+
+  const parsed = new Date(raw)
+  return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString()
+}
+
+const optionalDateField = z.preprocess(
+  normalizeOptionalDateValue,
+  z.union([
+    z.string().datetime(),
+    z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    z.null(),
+  ])
+).optional()
 
 export const createInstagramPostSchema = z.object({
   title: z.string().trim().max(72).optional(),
