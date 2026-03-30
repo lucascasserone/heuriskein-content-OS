@@ -440,10 +440,38 @@ export default function InstagramManager() {
           setPosts((current) => [created, ...current])
           importedCount += 1
         } catch (error) {
-          skippedCount += 1
+          const errMsg = error instanceof Error ? error.message : 'Invalid import row'
 
-          if (!firstImportError) {
-            firstImportError = error instanceof Error ? error.message : 'Invalid import row'
+          // Graceful fallback: if the DB is missing optional columns (attachments, tags,
+          // external_link), retry with only the core required fields.
+          const isSchemaError =
+            errMsg.includes('schema cache') ||
+            errMsg.includes("'attachments'") ||
+            errMsg.includes("'tags'") ||
+            errMsg.includes("'external_link'")
+
+          if (isSchemaError) {
+            try {
+              const corePayload = {
+                caption: payload.caption,
+                postType: payload.postType,
+                status: payload.status,
+                scheduledFor: payload.scheduledFor,
+              }
+              const created = await createInstagramPostRequest(corePayload)
+              setPosts((current) => [created, ...current])
+              importedCount += 1
+            } catch (retryError) {
+              skippedCount += 1
+              if (!firstImportError) {
+                firstImportError = retryError instanceof Error ? retryError.message : errMsg
+              }
+            }
+          } else {
+            skippedCount += 1
+            if (!firstImportError) {
+              firstImportError = errMsg
+            }
           }
         }
       }

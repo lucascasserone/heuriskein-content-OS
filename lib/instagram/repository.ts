@@ -51,17 +51,22 @@ function buildInsertPayload(input: CreateInstagramPostInput | UpdateInstagramPos
         publishedAt: input.publishedAt,
       }
 
-  return {
+  // Only include optional columns when they have values to avoid
+  // PostgREST schema cache errors on databases where migrations are pending.
+  const payload: Record<string, unknown> = {
     title: input.caption ? buildInstagramPostTitle(input.caption, input.title) : input.title,
     caption: input.caption,
-    external_link: input.link,
-    attachments: input.attachments,
-    tags: input.tags,
     post_type: input.postType,
     status: input.status,
     scheduled_for: publishDates.scheduledFor,
     published_at: publishDates.publishedAt,
   }
+
+  if (input.link) payload.external_link = input.link
+  if (input.attachments?.length) payload.attachments = input.attachments
+  if (input.tags?.length) payload.tags = input.tags
+
+  return payload
 }
 
 function sortPosts(posts: InstagramPost[]): InstagramPost[] {
